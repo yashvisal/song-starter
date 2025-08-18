@@ -2,9 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { refinePromptsWithUserFeedback } from "@/lib/llm"
 import { getArtist, saveGeneration } from "@/lib/database"
 import { validateRefineRequest } from "@/lib/validation"
+import { assertOpenAIEnv, assertDatabaseEnv } from "@/lib/env"
 
 export async function POST(request: NextRequest) {
   try {
+    // Minimal env assertions for this endpoint
+    assertDatabaseEnv()
+    assertOpenAIEnv()
+
     const body = await request.json()
 
     const { artistId, originalAnalysis, userAnswers } = validateRefineRequest(body)

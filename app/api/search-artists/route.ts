@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { spotifyAPI } from "@/lib/spotify"
 import { validateSearchQuery } from "@/lib/validation"
+import { assertSpotifyEnv } from "@/lib/env"
 
 export async function GET(request: NextRequest) {
   try {
+    assertSpotifyEnv()
     const { searchParams } = new URL(request.url)
     const query = searchParams.get("q")
 

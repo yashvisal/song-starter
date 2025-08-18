@@ -2,9 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { analyzeArtistAndGeneratePrompts } from "@/lib/llm"
 import { getArtist } from "@/lib/database"
 import { validateAnalyzeRequest } from "@/lib/validation"
+import { assertOpenAIEnv, assertDatabaseEnv } from "@/lib/env"
 
 export async function POST(request: NextRequest) {
   try {
+    // Minimal env assertions for this endpoint
+    assertDatabaseEnv()
+    assertOpenAIEnv()
+
     const body = await request.json()
 
     const { artistId } = validateAnalyzeRequest(body)

@@ -3,11 +3,12 @@ import { spotifyAPI } from "@/lib/spotify"
 import { saveArtist, getArtist } from "@/lib/database"
 import { ArtistAnalysis } from "@/components/artist-analysis"
 import type { AudioFeatures } from "@/lib/types"
+import { fetchTempoKeyForSong } from "@/lib/getsongbpm"
 
 interface ArtistPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 async function getArtistData(spotifyId: string) {
@@ -29,7 +30,7 @@ async function getArtistData(spotifyId: string) {
 
         console.log("[v0] Got artist and top tracks:", spotifyArtist.name, topTracks.length)
 
-        // Get audio features for top tracks
+        // Get audio features for top tracks (Spotify). If that fails, try GetSongBPM using the first top track title
         const trackIds = topTracks
           .slice(0, 10)
           .map((track) => track.id)
@@ -51,7 +52,31 @@ async function getArtistData(spotifyId: string) {
         }
 
         // Audio features will always be returned (either real or fallback)
-        const validFeatures = audioFeatures.filter(Boolean)
+        let validFeatures = audioFeatures.filter(Boolean)
+
+        if (validFeatures.length === 0 && topTracks.length > 0) {
+          const representative = topTracks[0]
+          const tempoKey = await fetchTempoKeyForSong(representative.name, spotifyArtist.name)
+          if (tempoKey) {
+            validFeatures = [
+              {
+                acousticness: 0.3,
+                danceability: 0.6,
+                energy: 0.6,
+                instrumentalness: 0.1,
+                liveness: 0.2,
+                loudness: -8,
+                speechiness: 0.15,
+                tempo: tempoKey.tempo ?? 120,
+                valence: 0.55,
+                key: tempoKey.key ?? 0,
+                mode: tempoKey.mode ?? 1,
+                time_signature: tempoKey.time_signature ?? 4,
+              } as AudioFeatures,
+            ]
+            console.log("[v0] Populated features from GetSongBPM fallback")
+          }
+        }
 
         let avgFeatures: AudioFeatures
         if (validFeatures.length > 0) {
@@ -59,13 +84,28 @@ async function getArtistData(spotifyId: string) {
           avgFeatures = validFeatures.reduce(
             (acc, features, index) => {
               if (features) {
-                Object.keys(features).forEach((key) => {
-                  const value = features[key as keyof AudioFeatures]
+                ;(
+                  [
+                    "acousticness",
+                    "danceability",
+                    "energy",
+                    "instrumentalness",
+                    "liveness",
+                    "loudness",
+                    "speechiness",
+                    "tempo",
+                    "valence",
+                    "key",
+                    "mode",
+                    "time_signature",
+                  ] as Array<keyof AudioFeatures>
+                ).forEach((key) => {
+                  const value = features[key]
                   if (typeof value === "number" && !isNaN(value)) {
                     if (index === 0) {
-                      acc[key as keyof AudioFeatures] = value
+                      acc[key] = value
                     } else {
-                      acc[key as keyof AudioFeatures] = (acc[key as keyof AudioFeatures] * index + value) / (index + 1)
+                      acc[key] = (acc[key] * index + value) / (index + 1)
                     }
                   }
                 })
@@ -104,6 +144,13 @@ async function getArtistData(spotifyId: string) {
             time_signature: 4,
           } as AudioFeatures
         }
+
+        // Sanitize averaged fields to valid ranges/integers
+        avgFeatures.key = Math.max(0, Math.min(11, Math.round(avgFeatures.key)))
+        avgFeatures.mode = avgFeatures.mode >= 0.5 ? 1 : 0
+        avgFeatures.time_signature = [3, 4].includes(Math.round(avgFeatures.time_signature))
+          ? Math.round(avgFeatures.time_signature)
+          : 4
 
         console.log("[v0] Calculated average features:", avgFeatures)
 
@@ -145,7 +192,8 @@ async function getArtistData(spotifyId: string) {
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
   try {
-    const artist = await getArtistData(params.id)
+    const { id } = await params
+    const artist = await getArtistData(id)
 
     if (!artist) {
       notFound()

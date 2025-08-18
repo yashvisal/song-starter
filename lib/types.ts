@@ -61,5 +61,12 @@ export interface Generation {
     processingTime: number
   }
   createdAt: Date
-  artist?: Artist
+  artist?: ArtistSummary
+}
+
+export interface ArtistSummary {
+  id: string
+  name: string
+  imageUrl: string
+  genres: string[]
 }

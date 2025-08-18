@@ -95,13 +95,13 @@ export async function saveGeneration(generationData: {
 
   const generation = result[0]
   return {
-    id: generation.id.toString(),
+    id: Number(generation.id),
     artistId: generation.artist_id,
     userQuestions: generation.user_questions,
     originalPrompts: generation.original_prompts,
     refinedPrompts: generation.refined_prompts,
     generationMetadata: generation.generation_metadata,
-    createdAt: generation.created_at,
+    createdAt: new Date(generation.created_at),
   }
 }
 
@@ -119,13 +119,13 @@ export async function getRecentGenerations(limit = 10): Promise<Generation[]> {
   `
 
   return result.map((row) => ({
-    id: row.id.toString(),
+    id: Number(row.id),
     artistId: row.artist_id,
     userQuestions: row.user_questions || [],
     originalPrompts: row.original_prompts || [],
     refinedPrompts: row.refined_prompts || [],
     generationMetadata: row.generation_metadata || {},
-    createdAt: row.created_at,
+    createdAt: new Date(row.created_at),
     artist: row.artist_name
       ? {
           id: row.artist_id,
