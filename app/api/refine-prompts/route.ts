@@ -1,14 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { refinePromptsWithUserFeedback } from "@/lib/llm"
 import { getArtist, saveGeneration } from "@/lib/database"
+import { validateRefineRequest } from "@/lib/validation"
 
 export async function POST(request: NextRequest) {
   try {
-    const { artistId, originalAnalysis, userAnswers } = await request.json()
+    const body = await request.json()
 
-    if (!artistId || !originalAnalysis || !userAnswers) {
-      return NextResponse.json({ error: "Missing required data" }, { status: 400 })
-    }
+    const { artistId, originalAnalysis, userAnswers } = validateRefineRequest(body)
 
     const artist = await getArtist(artistId)
     if (!artist) {
@@ -33,6 +32,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ refinedPrompts, generationId: generation.id })
   } catch (error) {
     console.error("Prompt refinement error:", error)
+
+    if (error instanceof Error && (error.message.includes("required") || error.message.includes("must be"))) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
     return NextResponse.json({ error: "Failed to refine prompts" }, { status: 500 })
   }
 }

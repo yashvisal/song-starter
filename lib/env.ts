@@ -13,12 +13,22 @@ export const env = {
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
 } as const
 
-// Validation helper
 export function validateEnv() {
-  const required = ["DATABASE_URL", "OPENAI_API_KEY"] as const
+  const required = ["DATABASE_URL", "OPENAI_API_KEY", "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET"] as const
   const missing = required.filter((key) => !env[key])
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`)
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}. Please configure these in your Vercel project settings.`,
+    )
+  }
+
+  // Validate URL format for DATABASE_URL
+  if (
+    env.DATABASE_URL &&
+    !env.DATABASE_URL.startsWith("postgres://") &&
+    !env.DATABASE_URL.startsWith("postgresql://")
+  ) {
+    throw new Error("DATABASE_URL must be a valid PostgreSQL connection string")
   }
 }

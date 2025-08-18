@@ -22,14 +22,23 @@ export function GenerationCard({ generation }: GenerationCardProps) {
     setTimeout(() => setCopiedIndex(null), 2000)
   }
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return "Unknown date"
+
+    const dateObj = date instanceof Date ? date : new Date(date)
+
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return "Invalid date"
+    }
+
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(date)
+    }).format(dateObj)
   }
 
   const promptsToShow = generation.refinedPrompts.length > 0 ? generation.refinedPrompts : generation.originalPrompts

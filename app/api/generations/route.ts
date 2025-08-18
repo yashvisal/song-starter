@@ -1,72 +1,110 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { promises as fs } from "fs"
-import path from "path"
-import type { Artist, Generation } from "@/lib/types"
+import { neon } from "@neondatabase/serverless"
+import { validateGenerationsQuery } from "@/lib/validation"
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const ARTISTS_FILE = path.join(DATA_DIR, "artists.json")
-const GENERATIONS_FILE = path.join(DATA_DIR, "generations.json")
-
-async function loadData<T>(filePath: string): Promise<T[]> {
-  try {
-    const data = await fs.readFile(filePath, "utf-8")
-    return JSON.parse(data)
-  } catch (error) {
-    return []
-  }
-}
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search") || ""
-    const limit = Number.parseInt(searchParams.get("limit") || "20")
-    const offset = Number.parseInt(searchParams.get("offset") || "0")
+    const { search, limit: limitStr, offset: offsetStr } = validateGenerationsQuery(searchParams)
 
-    const [generations, artists] = await Promise.all([
-      loadData<Generation>(GENERATIONS_FILE),
-      loadData<Artist>(ARTISTS_FILE),
-    ])
+    const limit = limitStr ? Number.parseInt(limitStr) : 20
+    const offset = offsetStr ? Number.parseInt(offsetStr) : 0
 
-    // Filter by search if provided
-    let filteredGenerations = generations
+    let result
     if (search) {
-      filteredGenerations = generations.filter((g) => {
-        const artist = artists.find((a) => a.id === g.artistId)
-        return artist?.name.toLowerCase().includes(search.toLowerCase())
-      })
+      result = await sql`
+        SELECT 
+          g.*,
+          a.name as artist_name,
+          a.image_url as artist_image_url,
+          a.genres as artist_genres
+        FROM generations g
+        LEFT JOIN artists a ON g.artist_id = a.id
+        WHERE LOWER(a.name) LIKE LOWER(${"%" + search + "%"})
+        ORDER BY g.created_at DESC 
+        LIMIT ${limit} 
+        OFFSET ${offset}
+      `
+    } else {
+      result = await sql`
+        SELECT 
+          g.*,
+          a.name as artist_name,
+          a.image_url as artist_image_url,
+          a.genres as artist_genres
+        FROM generations g
+        LEFT JOIN artists a ON g.artist_id = a.id
+        ORDER BY g.created_at DESC 
+        LIMIT ${limit} 
+        OFFSET ${offset}
+      `
     }
 
-    // Sort by creation date (newest first)
-    const sortedGenerations = filteredGenerations
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(offset, offset + limit)
-
-    // Add artist data to generations
-    const formattedGenerations = sortedGenerations.map((g) => {
-      const artist = artists.find((a) => a.id === g.artistId)
-      return {
-        id: g.id,
-        artistId: g.artistId,
-        userQuestions: g.userQuestions || [],
-        originalPrompts: g.originalPrompts || [],
-        refinedPrompts: g.refinedPrompts || [],
-        generationMetadata: g.generationMetadata || {},
-        createdAt: new Date(g.createdAt),
-        artist: artist
-          ? {
-              id: artist.id,
-              name: artist.name,
-              imageUrl: artist.imageUrl,
-              genres: artist.genres || [],
-            }
-          : undefined,
-      }
-    })
+    const formattedGenerations = result.map((row) => ({
+      id: row.id.toString(),
+      artistId: row.artist_id,
+      userQuestions: row.user_questions || [],
+      originalPrompts: row.original_prompts || [],
+      refinedPrompts: row.refined_prompts || [],
+      generationMetadata: row.generation_metadata || {},
+      createdAt: row.created_at,
+      artist: row.artist_name
+        ? {
+            id: row.artist_id,
+            name: row.artist_name,
+            imageUrl: row.artist_image_url,
+            genres: row.artist_genres || [],
+          }
+        : undefined,
+    }))
 
     return NextResponse.json(formattedGenerations)
   } catch (error) {
     console.error("Failed to fetch generations:", error)
+
+    if (error instanceof Error && (error.message.includes("must be") || error.message.includes("between"))) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
     return NextResponse.json({ error: "Failed to fetch generations" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { artistId, userQuestions, originalPrompts, refinedPrompts, generationMetadata } = body
+
+    if (!artistId || !originalPrompts || !refinedPrompts) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    const now = new Date()
+    const result = await sql`
+      INSERT INTO generations (
+        artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+      ) VALUES (
+        ${artistId}, ${JSON.stringify(userQuestions || [])}, 
+        ${JSON.stringify(originalPrompts)}, ${JSON.stringify(refinedPrompts)}, 
+        ${JSON.stringify(generationMetadata || {})}, ${now}
+      )
+      RETURNING *
+    `
+
+    const generation = result[0]
+    return NextResponse.json({
+      id: generation.id.toString(),
+      artistId: generation.artist_id,
+      userQuestions: generation.user_questions,
+      originalPrompts: generation.original_prompts,
+      refinedPrompts: generation.refined_prompts,
+      generationMetadata: generation.generation_metadata,
+      createdAt: generation.created_at,
+    })
+  } catch (error) {
+    console.error("Failed to save generation:", error)
+    return NextResponse.json({ error: "Failed to save generation" }, { status: 500 })
   }
 }

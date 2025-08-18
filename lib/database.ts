@@ -1,37 +1,8 @@
-import { promises as fs } from "fs"
-import path from "path"
+import { neon } from "@neondatabase/serverless"
 import type { Artist, Generation, AudioFeatures } from "./types"
+import { v4 as uuidv4 } from "uuid"
 
-// Simple file-based storage for demo purposes
-const DATA_DIR = path.join(process.cwd(), "data")
-const ARTISTS_FILE = path.join(DATA_DIR, "artists.json")
-const GENERATIONS_FILE = path.join(DATA_DIR, "generations.json")
-
-// Ensure data directory exists
-async function ensureDataDir() {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true })
-  } catch (error) {
-    // Directory might already exist
-  }
-}
-
-// Load data from JSON file
-async function loadData<T>(filePath: string): Promise<T[]> {
-  try {
-    await ensureDataDir()
-    const data = await fs.readFile(filePath, "utf-8")
-    return JSON.parse(data)
-  } catch (error) {
-    return []
-  }
-}
-
-// Save data to JSON file
-async function saveData<T>(filePath: string, data: T[]): Promise<void> {
-  await ensureDataDir()
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2))
-}
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function saveArtist(artistData: {
   spotifyId: string
@@ -42,46 +13,63 @@ export async function saveArtist(artistData: {
   imageUrl: string
   audioFeatures: AudioFeatures
 }): Promise<Artist> {
-  const artists = await loadData<Artist>(ARTISTS_FILE)
-  const id = `artist_${artistData.spotifyId}`
-
-  const existingIndex = artists.findIndex((a) => a.spotifyId === artistData.spotifyId)
   const now = new Date()
+  const id = uuidv4()
 
-  const artist: Artist = {
-    id,
-    name: artistData.name,
-    genres: artistData.genres,
-    popularity: artistData.popularity,
-    followers: artistData.followers,
-    imageUrl: artistData.imageUrl,
-    spotifyId: artistData.spotifyId,
-    audioFeatures: artistData.audioFeatures,
-    createdAt: existingIndex >= 0 ? artists[existingIndex].createdAt : now,
-    updatedAt: now,
+  const result = await sql`
+    INSERT INTO artists (
+      id, spotify_id, name, genres, popularity, followers, image_url, audio_features, created_at, updated_at
+    ) VALUES (
+      ${id}, ${artistData.spotifyId}, ${artistData.name}, ${artistData.genres}, 
+      ${artistData.popularity}, ${artistData.followers}, ${artistData.imageUrl}, 
+      ${JSON.stringify(artistData.audioFeatures)}, ${now}, ${now}
+    )
+    ON CONFLICT (spotify_id) 
+    DO UPDATE SET 
+      name = EXCLUDED.name,
+      genres = EXCLUDED.genres,
+      popularity = EXCLUDED.popularity,
+      followers = EXCLUDED.followers,
+      image_url = EXCLUDED.image_url,
+      audio_features = EXCLUDED.audio_features,
+      updated_at = EXCLUDED.updated_at
+    RETURNING *
+  `
+
+  const artist = result[0]
+  return {
+    id: artist.id,
+    name: artist.name,
+    genres: artist.genres,
+    popularity: artist.popularity,
+    followers: artist.followers,
+    imageUrl: artist.image_url,
+    spotifyId: artist.spotify_id,
+    audioFeatures: artist.audio_features,
+    createdAt: artist.created_at,
+    updatedAt: artist.updated_at,
   }
-
-  if (existingIndex >= 0) {
-    artists[existingIndex] = artist
-  } else {
-    artists.push(artist)
-  }
-
-  await saveData(ARTISTS_FILE, artists)
-  return artist
 }
 
 export async function getArtist(spotifyId: string): Promise<Artist | null> {
-  const artists = await loadData<Artist>(ARTISTS_FILE)
-  const artist = artists.find((a) => a.spotifyId === spotifyId)
+  const result = await sql`
+    SELECT * FROM artists WHERE spotify_id = ${spotifyId}
+  `
 
-  if (!artist) return null
+  if (result.length === 0) return null
 
-  // Convert date strings back to Date objects
+  const artist = result[0]
   return {
-    ...artist,
-    createdAt: new Date(artist.createdAt),
-    updatedAt: new Date(artist.updatedAt),
+    id: artist.id,
+    name: artist.name,
+    genres: artist.genres,
+    popularity: artist.popularity,
+    followers: artist.followers,
+    imageUrl: artist.image_url,
+    spotifyId: artist.spotify_id,
+    audioFeatures: artist.audio_features,
+    createdAt: artist.created_at,
+    updatedAt: artist.updated_at,
   }
 }
 
@@ -92,48 +80,59 @@ export async function saveGeneration(generationData: {
   refinedPrompts: string[]
   generationMetadata: any
 }): Promise<Generation> {
-  const generations = await loadData<Generation>(GENERATIONS_FILE)
+  const now = new Date()
 
-  const generation: Generation = {
-    id: `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    artistId: generationData.artistId,
-    userQuestions: generationData.userQuestions,
-    originalPrompts: generationData.originalPrompts,
-    refinedPrompts: generationData.refinedPrompts,
-    generationMetadata: generationData.generationMetadata,
-    createdAt: new Date(),
+  const result = await sql`
+    INSERT INTO generations (
+      artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+    ) VALUES (
+      ${generationData.artistId}, ${JSON.stringify(generationData.userQuestions)}, 
+      ${JSON.stringify(generationData.originalPrompts)}, ${JSON.stringify(generationData.refinedPrompts)}, 
+      ${JSON.stringify(generationData.generationMetadata)}, ${now}
+    )
+    RETURNING *
+  `
+
+  const generation = result[0]
+  return {
+    id: generation.id.toString(),
+    artistId: generation.artist_id,
+    userQuestions: generation.user_questions,
+    originalPrompts: generation.original_prompts,
+    refinedPrompts: generation.refined_prompts,
+    generationMetadata: generation.generation_metadata,
+    createdAt: generation.created_at,
   }
-
-  generations.push(generation)
-  await saveData(GENERATIONS_FILE, generations)
-
-  return generation
 }
 
 export async function getRecentGenerations(limit = 10): Promise<Generation[]> {
-  const [generations, artists] = await Promise.all([
-    loadData<Generation>(GENERATIONS_FILE),
-    loadData<Artist>(ARTISTS_FILE),
-  ])
+  const result = await sql`
+    SELECT 
+      g.*,
+      a.name as artist_name,
+      a.image_url as artist_image_url,
+      a.genres as artist_genres
+    FROM generations g
+    LEFT JOIN artists a ON g.artist_id = a.id
+    ORDER BY g.created_at DESC
+    LIMIT ${limit}
+  `
 
-  // Sort by creation date (newest first)
-  const sortedGenerations = generations
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, limit)
-
-  // Add artist data to generations
-  return sortedGenerations.map((g) => {
-    const artist = artists.find((a) => a.id === g.artistId)
-    return {
-      ...g,
-      createdAt: new Date(g.createdAt),
-      artist: artist
-        ? {
-            id: artist.id,
-            name: artist.name,
-            imageUrl: artist.imageUrl,
-          }
-        : undefined,
-    }
-  })
+  return result.map((row) => ({
+    id: row.id.toString(),
+    artistId: row.artist_id,
+    userQuestions: row.user_questions || [],
+    originalPrompts: row.original_prompts || [],
+    refinedPrompts: row.refined_prompts || [],
+    generationMetadata: row.generation_metadata || {},
+    createdAt: row.created_at,
+    artist: row.artist_name
+      ? {
+          id: row.artist_id,
+          name: row.artist_name,
+          imageUrl: row.artist_image_url,
+          genres: row.artist_genres || [],
+        }
+      : undefined,
+  }))
 }

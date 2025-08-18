@@ -1,14 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { analyzeArtistAndGeneratePrompts } from "@/lib/llm"
 import { getArtist } from "@/lib/database"
+import { validateAnalyzeRequest } from "@/lib/validation"
 
 export async function POST(request: NextRequest) {
   try {
-    const { artistId } = await request.json()
+    const body = await request.json()
 
-    if (!artistId) {
-      return NextResponse.json({ error: "Artist ID is required" }, { status: 400 })
-    }
+    const { artistId } = validateAnalyzeRequest(body)
 
     const artist = await getArtist(artistId)
     if (!artist) {
@@ -19,6 +18,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(analysis)
   } catch (error) {
     console.error("Artist analysis error:", error)
+
+    if (error instanceof Error && (error.message.includes("required") || error.message.includes("invalid"))) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
     return NextResponse.json({ error: "Failed to analyze artist" }, { status: 500 })
   }
 }
