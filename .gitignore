@@ -28,3 +28,4 @@ next-env.d.ts
 
 # Local data storage for demo
 /data/
+.env*.local

@@ -16,7 +16,7 @@ export default function HomePage() {
                 <Music className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Suno Producer</h1>
+                <h1 className="text-2xl font-bold text-foreground">Suno Producer Test!</h1>
                 <p className="text-sm text-muted-foreground">AI Music Prompt Generator</p>
               </div>
             </div>
