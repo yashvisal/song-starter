@@ -3,6 +3,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PromptGenerator } from "./prompt-generator"
+import { TopTracksList } from "./top-tracks-list"
 import type { Artist } from "@/lib/types"
 import { Music, Users, TrendingUp, ArrowLeft } from "lucide-react"
 import Link from "next/link"
@@ -15,9 +16,8 @@ export function ArtistAnalysis({ artist }: ArtistAnalysisProps) {
   const audioFeatures = [
     { name: "Energy", value: artist.audioFeatures.energy * 100, color: "bg-red-500" },
     { name: "Danceability", value: artist.audioFeatures.danceability * 100, color: "bg-green-500" },
-    { name: "Valence", value: artist.audioFeatures.valence * 100, color: "bg-yellow-500" },
+    { name: "Valence (Happiness)", value: artist.audioFeatures.valence * 100, color: "bg-yellow-500" },
     { name: "Acousticness", value: artist.audioFeatures.acousticness * 100, color: "bg-blue-500" },
-    { name: "Instrumentalness", value: artist.audioFeatures.instrumentalness * 100, color: "bg-purple-500" },
     { name: "Speechiness", value: artist.audioFeatures.speechiness * 100, color: "bg-pink-500" },
   ]
 
@@ -115,7 +115,29 @@ export function ArtistAnalysis({ artist }: ArtistAnalysisProps) {
                   <div className="text-sm font-medium mb-1">Loudness</div>
                   <div className="text-2xl font-bold text-primary">{Math.round(artist.audioFeatures.loudness)} dB</div>
                 </div>
+                <div>
+                  <div className="text-sm font-medium mb-1">Tempo</div>
+                  <div className="text-2xl font-bold text-primary">{Math.round(artist.audioFeatures.tempo)} BPM</div>
+                </div>
+                {typeof artist.audioFeatures.duration_ms === "number" && (
+                  <div>
+                    <div className="text-sm font-medium mb-1">Avg Duration</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {Math.floor((artist.audioFeatures.duration_ms / 1000) / 60)}:{String(Math.round((artist.audioFeatures.duration_ms / 1000) % 60)).padStart(2, "0")}
+                    </div>
+                  </div>
+                )}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Tracks</CardTitle>
+              <CardDescription>Popular tracks by the artist</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TopTracksList artistId={artist.spotifyId} limit={8} />
             </CardContent>
           </Card>
 

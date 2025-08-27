@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +24,7 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [refinedPrompts, setRefinedPrompts] = useState<string[]>([])
   const [generationId, setGenerationId] = useState<number>(0)
+  const autoRunFor = useRef<string | null>(null)
 
   const handleGeneratePrompts = async () => {
     setIsAnalyzing(true)
@@ -47,6 +48,14 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
       setIsAnalyzing(false)
     }
   }
+
+  // Auto-trigger initial prompt generation when the component mounts per artist
+  useEffect(() => {
+    if (autoRunFor.current !== artist.spotifyId && !analysis && !isAnalyzing) {
+      autoRunFor.current = artist.spotifyId
+      handleGeneratePrompts()
+    }
+  }, [artist.spotifyId])
 
   const handlePersonalize = () => {
     setViewState("questions")

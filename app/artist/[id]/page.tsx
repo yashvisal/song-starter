@@ -3,7 +3,7 @@ import { spotifyAPI } from "@/lib/spotify"
 import { saveArtist, getArtist } from "@/lib/database"
 import { ArtistAnalysis } from "@/components/artist-analysis"
 import type { AudioFeatures } from "@/lib/types"
-import { fetchTempoKeyForSong } from "@/lib/getsongbpm"
+import { fetchAudioFeaturesForTopTracks } from "@/lib/artistFeatures"
 
 interface ArtistPageProps {
   params: Promise<{
@@ -30,53 +30,18 @@ async function getArtistData(spotifyId: string) {
 
         console.log("[v0] Got artist and top tracks:", spotifyArtist.name, topTracks.length)
 
-        // Get audio features for top tracks (Spotify). If that fails, try GetSongBPM using the first top track title
-        const trackIds = topTracks
-          .slice(0, 10)
-          .map((track) => track.id)
-          .filter(Boolean)
-        console.log("[v0] Getting audio features for track IDs:", trackIds.length)
-
-        if (trackIds.length === 0) {
-          throw new Error("No valid track IDs found")
-        }
-
-        let audioFeatures: any[] = []
-        try {
-          audioFeatures = await spotifyAPI.getAudioFeatures(trackIds)
-          console.log("[v0] Got audio features:", audioFeatures.length)
-        } catch (audioError) {
-          console.log("[v0] Audio features failed, using empty array:", audioError)
-          // If audio features completely fail, we'll use default values
-          audioFeatures = []
-        }
-
-        // Audio features will always be returned (either real or fallback)
-        let validFeatures = audioFeatures.filter(Boolean)
-
-        if (validFeatures.length === 0 && topTracks.length > 0) {
-          const representative = topTracks[0]
-          const tempoKey = await fetchTempoKeyForSong(representative.name, spotifyArtist.name)
-          if (tempoKey) {
-            validFeatures = [
-              {
-                acousticness: 0.3,
-                danceability: 0.6,
-                energy: 0.6,
-                instrumentalness: 0.1,
-                liveness: 0.2,
-                loudness: -8,
-                speechiness: 0.15,
-                tempo: tempoKey.tempo ?? 120,
-                valence: 0.55,
-                key: tempoKey.key ?? 0,
-                mode: tempoKey.mode ?? 1,
-                time_signature: tempoKey.time_signature ?? 4,
-              } as AudioFeatures,
-            ]
-            console.log("[v0] Populated features from GetSongBPM fallback")
-          }
-        }
+        // Get audio features for top tracks via RapidAPI
+        const validFeatures = await fetchAudioFeaturesForTopTracks(spotifyId, 8)
+        console.log("[v0] Artist page: per-track features sample:",
+          validFeatures.slice(0, 3).map((f) => ({
+            tempo: f.tempo,
+            energy: Number(f.energy.toFixed(3)),
+            danceability: Number(f.danceability.toFixed(3)),
+            valence: Number(f.valence.toFixed(3)),
+            key: f.key,
+            mode: f.mode,
+          })),
+        )
 
         let avgFeatures: AudioFeatures
         if (validFeatures.length > 0) {
@@ -100,15 +65,23 @@ async function getArtistData(spotifyId: string) {
                     "time_signature",
                   ] as Array<keyof AudioFeatures>
                 ).forEach((key) => {
-                  const value = features[key]
+                  const value = (features as any)[key]
                   if (typeof value === "number" && !isNaN(value)) {
                     if (index === 0) {
-                      acc[key] = value
+                      ;(acc as any)[key] = value
                     } else {
-                      acc[key] = (acc[key] * index + value) / (index + 1)
+                      const prev = (acc as any)[key] as number
+                      ;(acc as any)[key] = (prev * index + value) / (index + 1)
                     }
                   }
                 })
+                // Extras: popularity and duration
+                if (typeof features.popularity === "number") {
+                  acc.popularity = ((acc.popularity || 0) * index + features.popularity) / (index + 1)
+                }
+                if (typeof features.duration_ms === "number") {
+                  acc.duration_ms = ((acc.duration_ms || 0) * index + features.duration_ms) / (index + 1)
+                }
               }
               return acc
             },
@@ -125,6 +98,8 @@ async function getArtistData(spotifyId: string) {
               key: 0,
               mode: 1,
               time_signature: 4,
+              popularity: 0,
+              duration_ms: 0,
             } as AudioFeatures,
           )
         } else {

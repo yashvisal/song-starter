@@ -71,7 +71,7 @@ function normalizeToAudioFeatures(payload: any): AudioFeatures {
   // Some providers use "happiness" instead of valence
   const valenceSource = payload?.valence ?? payload?.happiness
 
-  return {
+  const out: AudioFeatures = {
     acousticness: fromPercent(payload?.acousticness, 0.3),
     danceability: fromPercent(payload?.danceability, 0.6),
     energy: fromPercent(payload?.energy, 0.6),
@@ -85,6 +85,24 @@ function normalizeToAudioFeatures(payload: any): AudioFeatures {
     mode,
     time_signature,
   }
+
+  // Popularity (0..100) and duration
+  const popularityRaw = payload?.popularity
+  if (typeof popularityRaw === "number") {
+    out.popularity = Math.max(0, Math.min(100, popularityRaw))
+  }
+  const durationStr = typeof payload?.duration === "string" ? payload.duration : undefined
+  if (durationStr && /:\d{1,2}$/.test(durationStr)) {
+    const [minStr, secStr] = durationStr.split(":")
+    const ms = Number.parseInt(minStr, 10) * 60000 + Number.parseInt(secStr, 10) * 1000
+    if (Number.isFinite(ms)) out.duration_ms = ms
+  }
+
+  return out
+}
+
+async function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
 }
 
 async function rapidApiFetch(path: string, params: Record<string, string>, options: FetchOptions = {}) {
@@ -96,36 +114,46 @@ async function rapidApiFetch(path: string, params: Record<string, string>, optio
     if (v !== undefined && v !== null) url.searchParams.set(k, v)
   }
 
-  const controller = new AbortController()
-  const signal = options.signal || controller.signal
-  const timeout = setTimeout(() => controller.abort(), 8000)
-
-  try {
-    const res = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        "x-rapidapi-key": env.RAPIDAPI_KEY,
-        "x-rapidapi-host": env.RAPIDAPI_HOST,
-      },
-      signal,
-      next: { revalidate: 60 * 60 * 24 * 7 },
-    })
-
-    if (!res.ok) {
+  // Retry with gentle backoff on 429/5xx
+  let attempt = 0
+  const maxAttempts = 3
+  while (true) {
+    const controller = new AbortController()
+    const signal = options.signal || controller.signal
+    const timeout = setTimeout(() => controller.abort(), 45000)
+    try {
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "x-rapidapi-key": env.RAPIDAPI_KEY,
+          "x-rapidapi-host": env.RAPIDAPI_HOST,
+        },
+        signal,
+        next: { revalidate: 60 * 60 * 24 * 7 },
+      })
+      if (res.ok) {
+        return await res.json()
+      }
       const text = await res.text().catch(() => "")
+      // Handle provider per-second limit
+      if ((res.status === 429 || (res.status >= 500 && res.status < 600)) && attempt < maxAttempts - 1) {
+        const wait = 1200 * (attempt + 1)
+        await sleep(wait)
+        attempt += 1
+        continue
+      }
       throw new Error(`RapidAPI error ${res.status}: ${text}`)
+    } finally {
+      clearTimeout(timeout)
     }
-    return res.json()
-  } finally {
-    clearTimeout(timeout)
   }
 }
 
 export async function analyzeTrackBySpotifyId(spotifyTrackId: string): Promise<AudioFeatures> {
   // Endpoint per RapidAPI docs/snippet: /pktx/spotify/{trackId}
   const data = await rapidApiFetch(`/pktx/spotify/${encodeURIComponent(spotifyTrackId)}`, {})
-  const features = data?.features || data?.analysis || data
-  return normalizeToAudioFeatures(features)
+  // The provider returns a flat object with fields like tempo, energy(0..100), danceability(0..100), happiness, duration, popularity, key letter, mode string
+  return normalizeToAudioFeatures(data)
 }
 
 export async function analyzeTrackByName(title: string, artist: string): Promise<AudioFeatures> {

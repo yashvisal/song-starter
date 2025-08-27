@@ -26,6 +26,9 @@ export interface AudioFeatures {
   key: number
   mode: number
   time_signature: number
+  // Optional extras from Track Analysis API (averaged across tracks)
+  popularity?: number // 0..100
+  duration_ms?: number // average duration in milliseconds
 }
 
 export interface Artist {

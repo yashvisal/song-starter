@@ -45,7 +45,8 @@ export function QuestionInterface({ questions, onComplete, onBack, isRefining = 
     }
   }
 
-  const canProceed = answers[currentQuestionIndex]?.answer?.trim() !== ""
+  const currentAnswer = answers[currentQuestionIndex]?.answer || ""
+  const canProceed = currentAnswer.trim() !== ""
   const isLastQuestion = currentQuestionIndex === questions.length - 1
 
   const renderQuestionInput = () => {
@@ -131,7 +132,7 @@ export function QuestionInterface({ questions, onComplete, onBack, isRefining = 
             {currentQuestionIndex === 0 ? "Back to Prompts" : "Previous"}
           </Button>
 
-          <Button onClick={goToNext} disabled={!canProceed || isRefining} className="gap-2">
+          <Button onClick={goToNext} disabled={isRefining} className="gap-2">
             {isRefining ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -144,7 +145,7 @@ export function QuestionInterface({ questions, onComplete, onBack, isRefining = 
               </>
             ) : (
               <>
-                Next
+                {canProceed ? "Next" : "Skip"}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
