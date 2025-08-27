@@ -2,6 +2,8 @@ import { notFound } from "next/navigation"
 import { spotifyAPI } from "@/lib/spotify"
 import { saveArtist, getArtist } from "@/lib/database"
 import { ArtistAnalysis } from "@/components/artist-analysis"
+import { analyzeArtistAndGeneratePrompts } from "@/lib/llm"
+import { PromptGenerator } from "@/components/prompt-generator"
 import type { AudioFeatures } from "@/lib/types"
 import { fetchAudioFeaturesForTopTracks } from "@/lib/artistFeatures"
 
@@ -129,6 +131,17 @@ async function getArtistData(spotifyId: string) {
 
         console.log("[v0] Calculated average features:", avgFeatures)
 
+        // Precompute LLM analysis so the page renders with prompts ready
+        const initialAnalysis = await analyzeArtistAndGeneratePrompts({
+          ...spotifyArtist,
+          spotifyId: spotifyArtist.id,
+          imageUrl: spotifyArtist.images?.[0]?.url || "",
+          followers: spotifyArtist.followers?.total || 0,
+          audioFeatures: avgFeatures,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any)
+
         // Save to database
         artist = await saveArtist({
           spotifyId: spotifyArtist.id,
@@ -141,6 +154,7 @@ async function getArtistData(spotifyId: string) {
         })
 
         console.log("[v0] Saved artist to database")
+        ;(artist as any).__initialAnalysis = initialAnalysis
       } catch (spotifyError) {
         console.log("[v0] Spotify API error:", spotifyError)
         artist = await getArtist(spotifyId)
@@ -174,7 +188,17 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
       notFound()
     }
 
-    return <ArtistAnalysis artist={artist} />
+    // Pass precomputed analysis into the prompt generator if available
+    const initialAnalysis = (artist as any).__initialAnalysis || null
+
+    return (
+      <>
+        <ArtistAnalysis artist={artist} />
+        <div className="mt-6">
+          <PromptGenerator artist={artist as any} initialAnalysis={initialAnalysis} />
+        </div>
+      </>
+    )
   } catch (error) {
     console.log("[v0] Artist page error:", error)
     notFound()

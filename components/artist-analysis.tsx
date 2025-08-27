@@ -141,9 +141,7 @@ export function ArtistAnalysis({ artist }: ArtistAnalysisProps) {
             </CardContent>
           </Card>
 
-          <div className="lg:col-span-1">
-            <PromptGenerator artist={artist} />
-          </div>
+          
         </div>
       </div>
     </div>

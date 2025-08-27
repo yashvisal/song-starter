@@ -12,19 +12,22 @@ import type { AnalysisResult } from "@/lib/llm"
 
 interface PromptGeneratorProps {
   artist: Artist
+  initialAnalysis?: AnalysisResult | null
 }
 
 type ViewState = "initial" | "analysis" | "questions" | "refined"
 
-export function PromptGenerator({ artist }: PromptGeneratorProps) {
-  const [viewState, setViewState] = useState<ViewState>("initial")
+export function PromptGenerator({ artist, initialAnalysis = null }: PromptGeneratorProps) {
+  const [viewState, setViewState] = useState<ViewState>(initialAnalysis ? "analysis" : "initial")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(initialAnalysis)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [refinedPrompts, setRefinedPrompts] = useState<string[]>([])
   const [generationId, setGenerationId] = useState<number>(0)
   const autoRunFor = useRef<string | null>(null)
+
+  // If server provided analysis, show it immediately (state already initialized)
 
   const handleGeneratePrompts = async () => {
     setIsAnalyzing(true)
@@ -51,11 +54,11 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
 
   // Auto-trigger initial prompt generation when the component mounts per artist
   useEffect(() => {
-    if (autoRunFor.current !== artist.spotifyId && !analysis && !isAnalyzing) {
+    if (autoRunFor.current !== artist.spotifyId && !analysis && !isAnalyzing && !initialAnalysis) {
       autoRunFor.current = artist.spotifyId
       handleGeneratePrompts()
     }
-  }, [artist.spotifyId])
+  }, [artist.spotifyId, initialAnalysis])
 
   const handlePersonalize = () => {
     setViewState("questions")
@@ -115,24 +118,15 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
-            AI Prompt Generation
+            Preparing Prompts
           </CardTitle>
-          <CardDescription>Generate personalized music prompts based on {artist.name}'s style</CardDescription>
+          <CardDescription>Analyzing {artist.name}'s style to generate ready-to-use prompts</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleGeneratePrompts} disabled={isAnalyzing} size="lg" className="w-full gap-2">
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Analyzing {artist.name}...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5" />
-                Generate AI Prompts
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Generating initial prompts…
+          </div>
         </CardContent>
       </Card>
     )

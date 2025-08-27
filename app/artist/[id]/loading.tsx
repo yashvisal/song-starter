@@ -20,7 +20,8 @@ export default function Loading() {
       } catch {}
     }
     fetchTracks().then(() => setPhase("analyzing"))
-    timer = setInterval(() => setIdx((i) => i + 1), 1000)
+    // Advance message every ~2.2s and stop after the last message
+    timer = setInterval(() => setIdx((i) => i + 1), 10000)
     return () => clearInterval(timer)
   }, [artistId])
 
@@ -57,7 +58,7 @@ export default function Loading() {
     "Summarizing results…",
     "Gathering Data for Prompts…",
   ]
-  const current = canned[idx % canned.length]
+  const current = canned[Math.min(idx, canned.length - 1)]
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
