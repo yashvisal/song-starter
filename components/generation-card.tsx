@@ -67,7 +67,7 @@ export function GenerationCard({ generation }: GenerationCardProps) {
               </span>
               <span className="flex items-center gap-1">
                 <User className="w-3 h-3" />
-                {promptType} Prompts
+                {generation.userId ? `by ${generation.userId}` : promptType + " Prompts"}
               </span>
             </CardDescription>
             {generation.artist?.genres && generation.artist.genres.length > 0 && (

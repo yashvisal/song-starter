@@ -60,6 +60,32 @@ export function PromptGenerator({ artist, initialAnalysis = null }: PromptGenera
     }
   }, [artist.spotifyId, initialAnalysis])
 
+  // Save initial generation once when analysis is ready
+  const savedInitialRef = useRef(false)
+  useEffect(() => {
+    async function saveInitial() {
+      if (!analysis || savedInitialRef.current) return
+      savedInitialRef.current = true
+      let userId = ""
+      try { userId = localStorage.getItem("suno_username") || "" } catch {}
+      try {
+        await fetch("/api/generations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            artistId: artist.id,
+            userId: userId || null,
+            userQuestions: [],
+            originalPrompts: analysis.initialPrompts,
+            refinedPrompts: [],
+            generationMetadata: { analysisData: analysis, timestamp: new Date().toISOString(), processingTime: 0, phase: "initial" },
+          }),
+        })
+      } catch {}
+    }
+    saveInitial()
+  }, [analysis, artist.id])
+
   const handlePersonalize = () => {
     setViewState("questions")
   }

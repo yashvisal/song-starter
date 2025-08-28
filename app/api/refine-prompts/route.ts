@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     const { artistId, originalAnalysis, userAnswers } = validateRefineRequest(body)
+    const userId = typeof body?.userId === "string" ? body.userId : undefined
 
     const artist = await getArtist(artistId)
     if (!artist) {
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
     // Save the generation to database
     const generation = await saveGeneration({
       artistId: artist.id,
+      userId,
       userQuestions: userAnswers,
       originalPrompts: originalAnalysis.initialPrompts,
       refinedPrompts,
