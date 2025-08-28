@@ -8,12 +8,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const { search, limit: limitStr, offset: offsetStr } = validateGenerationsQuery(searchParams)
+    const userOnly = searchParams.get("user") || undefined
 
     const limit = limitStr ? Number.parseInt(limitStr) : 20
     const offset = offsetStr ? Number.parseInt(offsetStr) : 0
 
     let result
-    if (search) {
+    if (search || userOnly) {
       result = await sql`
         SELECT 
           g.*,
@@ -22,7 +23,9 @@ export async function GET(request: NextRequest) {
           a.genres as artist_genres
         FROM generations g
         LEFT JOIN artists a ON g.artist_id = a.id
-        WHERE LOWER(a.name) LIKE LOWER(${"%" + search + "%"})
+        WHERE 
+          (${search ? sql`LOWER(a.name) LIKE LOWER(${"%" + search + "%"})` : sql`TRUE`}) AND
+          (${userOnly ? sql`g.user_id = ${userOnly}` : sql`TRUE`})
         ORDER BY g.created_at DESC 
         LIMIT ${limit} 
         OFFSET ${offset}
@@ -75,7 +78,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { artistId, userQuestions, originalPrompts, refinedPrompts, generationMetadata } = body
+    const { artistId, userId, userQuestions, originalPrompts, refinedPrompts, generationMetadata } = body
 
     if (!artistId || !originalPrompts || !refinedPrompts) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -84,9 +87,9 @@ export async function POST(request: NextRequest) {
     const now = new Date()
     const result = await sql`
       INSERT INTO generations (
-        artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+        artist_id, user_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
       ) VALUES (
-        ${artistId}, ${JSON.stringify(userQuestions || [])}, 
+        ${artistId}, ${userId || null}, ${JSON.stringify(userQuestions || [])}, 
         ${JSON.stringify(originalPrompts)}, ${JSON.stringify(refinedPrompts)}, 
         ${JSON.stringify(generationMetadata || {})}, ${now}
       )

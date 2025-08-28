@@ -65,6 +65,7 @@ export interface Generation {
   }
   createdAt: Date
   artist?: ArtistSummary
+  userId?: string
 }
 
 export interface ArtistSummary {

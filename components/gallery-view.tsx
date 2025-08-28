@@ -13,6 +13,8 @@ export function GalleryView() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
+  const [mineOnly, setMineOnly] = useState(false)
+  const [username, setUsername] = useState<string>("")
 
   const fetchGenerations = async (search = "") => {
     setIsSearching(true)
@@ -20,6 +22,7 @@ export function GalleryView() {
       const params = new URLSearchParams()
       if (search) params.set("search", search)
       params.set("limit", "20")
+      if (mineOnly && username) params.set("user", username)
 
       const response = await fetch(`/api/generations?${params}`)
       if (response.ok) {
@@ -35,6 +38,10 @@ export function GalleryView() {
   }
 
   useEffect(() => {
+    try {
+      const u = localStorage.getItem("suno_username") || ""
+      setUsername(u)
+    } catch {}
     fetchGenerations()
   }, [])
 
@@ -42,9 +49,8 @@ export function GalleryView() {
     const debounceTimer = setTimeout(() => {
       fetchGenerations(searchQuery)
     }, 300)
-
     return () => clearTimeout(debounceTimer)
-  }, [searchQuery])
+  }, [searchQuery, mineOnly, username])
 
   const handleRefresh = () => {
     setIsLoading(true)
@@ -58,16 +64,27 @@ export function GalleryView() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Browse Generations</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="gap-2 bg-transparent"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-3">
+              <label className="text-xs flex items-center gap-1 select-none">
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={mineOnly}
+                  onChange={(e) => setMineOnly(e.target.checked)}
+                />
+                {username ? `Only mine (${username})` : "Only mine"}
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isLoading}
+                className="gap-2 bg-transparent"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
           </CardTitle>
           <CardDescription>Discover AI music prompts created by the community</CardDescription>
         </CardHeader>
