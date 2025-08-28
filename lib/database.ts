@@ -79,24 +79,44 @@ export async function saveGeneration(generationData: {
   originalPrompts: string[]
   refinedPrompts: string[]
   generationMetadata: any
+  userId?: string
 }): Promise<Generation> {
   const now = new Date()
 
-  const result = await sql`
-    INSERT INTO generations (
-      artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
-    ) VALUES (
-      ${generationData.artistId}, ${JSON.stringify(generationData.userQuestions)}, 
-      ${JSON.stringify(generationData.originalPrompts)}, ${JSON.stringify(generationData.refinedPrompts)}, 
-      ${JSON.stringify(generationData.generationMetadata)}, ${now}
-    )
-    RETURNING *
-  `
+  let result
+  try {
+    result = await sql`
+      INSERT INTO generations (
+        artist_id, user_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+      ) VALUES (
+        ${generationData.artistId}, ${generationData.userId || null}, ${JSON.stringify(generationData.userQuestions)}, 
+        ${JSON.stringify(generationData.originalPrompts)}, ${JSON.stringify(generationData.refinedPrompts)}, 
+        ${JSON.stringify(generationData.generationMetadata)}, ${now}
+      )
+      RETURNING *
+    `
+  } catch (e: any) {
+    if (String(e?.message || e).includes("user_id")) {
+      result = await sql`
+        INSERT INTO generations (
+          artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+        ) VALUES (
+          ${generationData.artistId}, ${JSON.stringify(generationData.userQuestions)}, 
+          ${JSON.stringify(generationData.originalPrompts)}, ${JSON.stringify(generationData.refinedPrompts)}, 
+          ${JSON.stringify(generationData.generationMetadata)}, ${now}
+        )
+        RETURNING *
+      `
+    } else {
+      throw e
+    }
+  }
 
   const generation = result[0]
   return {
     id: Number(generation.id),
     artistId: generation.artist_id,
+    userId: generation.user_id,
     userQuestions: generation.user_questions,
     originalPrompts: generation.original_prompts,
     refinedPrompts: generation.refined_prompts,

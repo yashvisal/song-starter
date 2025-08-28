@@ -1,6 +1,7 @@
 import { GalleryView } from "@/components/gallery-view"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Music } from "lucide-react"
+import { UserNameChip } from "@/components/UserNameChip"
 import Link from "next/link"
 
 export default function GalleryPage() {
@@ -26,6 +27,7 @@ export default function GalleryPage() {
                 </div>
               </div>
             </div>
+            <UserNameChip />
           </div>
         </div>
       </header>

@@ -14,40 +14,62 @@ export async function GET(request: NextRequest) {
     const offset = offsetStr ? Number.parseInt(offsetStr) : 0
 
     let result
-    if (search || userOnly) {
-      result = await sql`
-        SELECT 
-          g.*,
-          a.name as artist_name,
-          a.image_url as artist_image_url,
-          a.genres as artist_genres
-        FROM generations g
-        LEFT JOIN artists a ON g.artist_id = a.id
-        WHERE 
-          (${search ? sql`LOWER(a.name) LIKE LOWER(${"%" + search + "%"})` : sql`TRUE`}) AND
-          (${userOnly ? sql`g.user_id = ${userOnly}` : sql`TRUE`})
-        ORDER BY g.created_at DESC 
-        LIMIT ${limit} 
-        OFFSET ${offset}
-      `
-    } else {
-      result = await sql`
-        SELECT 
-          g.*,
-          a.name as artist_name,
-          a.image_url as artist_image_url,
-          a.genres as artist_genres
-        FROM generations g
-        LEFT JOIN artists a ON g.artist_id = a.id
-        ORDER BY g.created_at DESC 
-        LIMIT ${limit} 
-        OFFSET ${offset}
-      `
+    try {
+      if (search || userOnly) {
+        result = await sql`
+          SELECT 
+            g.*,
+            a.name as artist_name,
+            a.image_url as artist_image_url,
+            a.genres as artist_genres
+          FROM generations g
+          LEFT JOIN artists a ON g.artist_id = a.id
+          WHERE 
+            (${search ? sql`LOWER(a.name) LIKE LOWER(${"%" + search + "%"})` : sql`TRUE`}) AND
+            (${userOnly ? sql`g.user_id = ${userOnly}` : sql`TRUE`})
+          ORDER BY g.created_at DESC 
+          LIMIT ${limit} 
+          OFFSET ${offset}
+        `
+      } else {
+        result = await sql`
+          SELECT 
+            g.*,
+            a.name as artist_name,
+            a.image_url as artist_image_url,
+            a.genres as artist_genres
+          FROM generations g
+          LEFT JOIN artists a ON g.artist_id = a.id
+          ORDER BY g.created_at DESC 
+          LIMIT ${limit} 
+          OFFSET ${offset}
+        `
+      }
+    } catch (e: any) {
+      // Fallback if user_id column doesn't exist yet
+      if (String(e?.message || e).includes("user_id")) {
+        result = await sql`
+          SELECT 
+            g.*,
+            a.name as artist_name,
+            a.image_url as artist_image_url,
+            a.genres as artist_genres
+          FROM generations g
+          LEFT JOIN artists a ON g.artist_id = a.id
+          ${search ? sql`WHERE LOWER(a.name) LIKE LOWER(${"%" + search + "%"})` : sql``}
+          ORDER BY g.created_at DESC 
+          LIMIT ${limit} 
+          OFFSET ${offset}
+        `
+      } else {
+        throw e
+      }
     }
 
     const formattedGenerations = result.map((row) => ({
       id: Number(row.id),
       artistId: row.artist_id,
+      userId: row.user_id,
       userQuestions: row.user_questions || [],
       originalPrompts: row.original_prompts || [],
       refinedPrompts: row.refined_prompts || [],
@@ -85,16 +107,34 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date()
-    const result = await sql`
-      INSERT INTO generations (
-        artist_id, user_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
-      ) VALUES (
-        ${artistId}, ${userId || null}, ${JSON.stringify(userQuestions || [])}, 
-        ${JSON.stringify(originalPrompts)}, ${JSON.stringify(refinedPrompts)}, 
-        ${JSON.stringify(generationMetadata || {})}, ${now}
-      )
-      RETURNING *
-    `
+    let result
+    try {
+      result = await sql`
+        INSERT INTO generations (
+          artist_id, user_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+        ) VALUES (
+          ${artistId}, ${userId || null}, ${JSON.stringify(userQuestions || [])}, 
+          ${JSON.stringify(originalPrompts)}, ${JSON.stringify(refinedPrompts)}, 
+          ${JSON.stringify(generationMetadata || {})}, ${now}
+        )
+        RETURNING *
+      `
+    } catch (e: any) {
+      if (String(e?.message || e).includes("user_id")) {
+        result = await sql`
+          INSERT INTO generations (
+            artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+          ) VALUES (
+            ${artistId}, ${JSON.stringify(userQuestions || [])}, 
+            ${JSON.stringify(originalPrompts)}, ${JSON.stringify(refinedPrompts)}, 
+            ${JSON.stringify(generationMetadata || {})}, ${now}
+          )
+          RETURNING *
+        `
+      } else {
+        throw e
+      }
+    }
 
     const generation = result[0]
     return NextResponse.json({
