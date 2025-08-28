@@ -4,6 +4,7 @@ import { ArtistSearch } from "@/components/artist-search"
 import { RecentGenerations } from "@/components/recent-generations"
 import { Search, Music, GalleryThumbnailsIcon as Gallery } from "lucide-react"
 import Link from "next/link"
+import { UserNameChip } from "@/components/UserNameChip"
 
 export default function HomePage() {
   return (
@@ -20,12 +21,15 @@ export default function HomePage() {
                 <p className="text-sm text-muted-foreground">AI Music Prompt Generator</p>
               </div>
             </div>
-            <Link href="/gallery">
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <Gallery className="w-4 h-4" />
-                Browse Gallery
-              </Button>
-            </Link>
+            <div className="flex items-center gap-3">
+              <UserNameChip />
+              <Link href="/gallery">
+                <Button variant="outline" className="gap-2 bg-transparent">
+                  <Gallery className="w-4 h-4" />
+                  Browse Gallery
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
