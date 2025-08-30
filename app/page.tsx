@@ -19,8 +19,8 @@ export default function HomePage() {
             <a href="#gallery" className="hover:text-neutral-900">Gallery</a>
             <UserNameChip />
             <Link href="/gallery">
-              <Button variant="outline" className="h-8 gap-2 border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50">
-                Browse
+              <Button className="h-9 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 hover:brightness-110">
+                Browse Gallery
               </Button>
             </Link>
           </nav>
