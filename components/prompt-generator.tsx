@@ -140,7 +140,7 @@ export function PromptGenerator({ artist, initialAnalysis = null }: PromptGenera
   // Initial state - no analysis yet
   if (viewState === "initial") {
     return (
-      <Card>
+      <Card className="border-neutral-200 rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
@@ -187,7 +187,7 @@ export function PromptGenerator({ artist, initialAnalysis = null }: PromptGenera
     return (
       <div className="space-y-6">
         {/* Analysis Results */}
-        <Card>
+        <Card className="border-neutral-200 rounded-2xl shadow-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -229,7 +229,7 @@ export function PromptGenerator({ artist, initialAnalysis = null }: PromptGenera
         </Card>
 
         {/* Generated Prompts */}
-        <Card>
+        <Card className="border-neutral-200 rounded-2xl shadow-sm">
           <CardHeader>
             <CardTitle>Generated Prompts</CardTitle>
             <CardDescription>10 AI-generated music prompts ready for Suno AI</CardDescription>
@@ -258,7 +258,7 @@ export function PromptGenerator({ artist, initialAnalysis = null }: PromptGenera
               ))}
             </div>
             <div className="mt-6 pt-6 border-t border-border">
-              <Button onClick={handlePersonalize} className="w-full gap-2" size="lg">
+              <Button onClick={handlePersonalize} className="w-full gap-2 rounded-xl" size="lg">
                 <Sparkles className="w-5 h-5" />
                 Personalize These Prompts
               </Button>

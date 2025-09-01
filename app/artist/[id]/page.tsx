@@ -5,7 +5,7 @@ import { ArtistAnalysis } from "@/components/artist-analysis"
 import { analyzeArtistAndGeneratePrompts } from "@/lib/llm"
 import { PromptGenerator } from "@/components/prompt-generator"
 import type { AudioFeatures } from "@/lib/types"
-import { fetchAudioFeaturesForTopTracks } from "@/lib/artistFeatures"
+import { fetchAudioFeaturesReccoBeats } from "@/lib/reccobeats"
 
 interface ArtistPageProps {
   params: Promise<{
@@ -32,18 +32,22 @@ async function getArtistData(spotifyId: string) {
 
         console.log("[v0] Got artist and top tracks:", spotifyArtist.name, topTracks.length)
 
-        // Get audio features for top tracks via RapidAPI
-        const validFeatures = await fetchAudioFeaturesForTopTracks(spotifyId, 8)
-        console.log("[v0] Artist page: per-track features sample:",
-          validFeatures.slice(0, 3).map((f) => ({
-            tempo: f.tempo,
-            energy: Number(f.energy.toFixed(3)),
-            danceability: Number(f.danceability.toFixed(3)),
-            valence: Number(f.valence.toFixed(3)),
-            key: f.key,
-            mode: f.mode,
-          })),
-        )
+        // Get audio features for top tracks via ReccoBeats (much faster!)
+        const tracksToAnalyze = topTracks.slice(0, 8)
+        const trackIds = tracksToAnalyze.map(track => track.id)
+        const trackInfo = tracksToAnalyze.map(track => ({
+          id: track.id,
+          name: track.name,
+          artist: track.artists?.[0]?.name || 'Unknown Artist'
+        }))
+        
+        console.log(`[v0] Starting audio feature analysis for ${tracksToAnalyze.length} top tracks:`)
+        tracksToAnalyze.forEach((track, index) => {
+          console.log(`  ${index + 1}. ${track.name} - ${track.artists?.[0]?.name || 'Unknown'} (${track.id})`)
+        })
+        
+        const validFeatures = await fetchAudioFeaturesReccoBeats(trackIds, trackInfo)
+        console.log(`[v0] Audio feature analysis complete: ${validFeatures.length}/${trackIds.length} tracks successful`)
 
         let avgFeatures: AudioFeatures
         if (validFeatures.length > 0) {
@@ -77,13 +81,8 @@ async function getArtistData(spotifyId: string) {
                     }
                   }
                 })
-                // Extras: popularity and duration
-                if (typeof features.popularity === "number") {
-                  acc.popularity = ((acc.popularity || 0) * index + features.popularity) / (index + 1)
-                }
-                if (typeof features.duration_ms === "number") {
-                  acc.duration_ms = ((acc.duration_ms || 0) * index + features.duration_ms) / (index + 1)
-                }
+                // Note: ReccoBeats doesn't provide popularity or duration_ms
+                // These fields will remain undefined
               }
               return acc
             },
@@ -100,8 +99,6 @@ async function getArtistData(spotifyId: string) {
               key: 0,
               mode: 1,
               time_signature: 4,
-              popularity: 0,
-              duration_ms: 0,
             } as AudioFeatures,
           )
         } else {
@@ -129,7 +126,17 @@ async function getArtistData(spotifyId: string) {
           ? Math.round(avgFeatures.time_signature)
           : 4
 
-        console.log("[v0] Calculated average features:", avgFeatures)
+        console.log("[v0] Calculated average features from", validFeatures.length, "tracks:")
+        console.log("  Final averages:", {
+          energy: `${(avgFeatures.energy * 100).toFixed(1)}%`,
+          danceability: `${(avgFeatures.danceability * 100).toFixed(1)}%`,
+          valence: `${(avgFeatures.valence * 100).toFixed(1)}%`,
+          tempo: `${avgFeatures.tempo.toFixed(1)} BPM`,
+          key: avgFeatures.key,
+          mode: avgFeatures.mode === 1 ? 'Major' : 'Minor',
+          acousticness: `${(avgFeatures.acousticness * 100).toFixed(1)}%`,
+          loudness: `${avgFeatures.loudness.toFixed(1)} dB`
+        })
 
         // Precompute LLM analysis so the page renders with prompts ready
         const initialAnalysis = await analyzeArtistAndGeneratePrompts({
@@ -192,12 +199,9 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
     const initialAnalysis = (artist as any).__initialAnalysis || null
 
     return (
-      <>
+      <main className="bg-white text-neutral-900">
         <ArtistAnalysis artist={artist} />
-        <div className="mt-6">
-          <PromptGenerator artist={artist as any} initialAnalysis={initialAnalysis} />
-        </div>
-      </>
+      </main>
     )
   } catch (error) {
     console.log("[v0] Artist page error:", error)
