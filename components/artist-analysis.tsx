@@ -6,7 +6,7 @@ import { ArtistAnalysisResults } from "./artist-analysis-results"
 import { PromptGeneration } from "./prompt-generation"
 import { TopTracksList } from "./top-tracks-list"
 import type { Artist } from "@/lib/types"
-import { Music, Users, TrendingUp, ArrowLeft } from "lucide-react"
+import { Music, Users, TrendingUp, ArrowLeft, BarChart3, ListMusic } from "lucide-react"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -62,18 +62,26 @@ export function ArtistAnalysis({ artist, initialAnalysis }: ArtistAnalysisProps)
                 <div className="flex items-center gap-2">
                   <h1 className="truncate text-xl font-semibold tracking-tight text-neutral-900">{artist.name}</h1>
                 </div>
-                <div className="mt-1 grid grid-cols-3 gap-3 text-xs text-neutral-600">
-                  <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{artist.followers.toLocaleString()}</div>
-                  <div className="flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" />{artist.popularity}/100</div>
-                  <div className="flex items-center gap-1"><Music className="w-3.5 h-3.5" />{Math.round(artist.audioFeatures.tempo)} BPM</div>
+                <div className="mt-2 grid grid-cols-4 gap-3">
+                  <div>
+                    <div className="text-[11px] text-neutral-500">Followers</div>
+                    <div className="text-sm font-medium text-neutral-900">{artist.followers.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-neutral-500">Popularity</div>
+                    <div className="text-sm font-medium text-neutral-900">{artist.popularity}/100</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-neutral-500">Tempo</div>
+                    <div className="text-sm font-medium text-neutral-900">{Math.round(artist.audioFeatures.tempo)} BPM</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-neutral-500">Key</div>
+                    <div className="text-sm font-medium text-neutral-900">{["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][artist.audioFeatures.key]}</div>
+                  </div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {artist.genres.slice(0, 3).map((g) => (
-                    <Badge key={g} variant="secondary" className="rounded-full text-xs">{g}</Badge>
-                  ))}
-                </div>
+                {/* Genres removed from snapshot per request */}
               </div>
-              <Button variant="outline" size="sm" className="rounded-full border-neutral-200">More details</Button>
             </div>
           </CardContent>
         </Card>
@@ -82,18 +90,18 @@ export function ArtistAnalysis({ artist, initialAnalysis }: ArtistAnalysisProps)
       <div className="mx-auto max-w-6xl px-4 pt-6 md:pt-8 pb-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8">
         {/* Left/main: Tabs only */}
         <div className="space-y-6">
-          <Tabs defaultValue="prompts" className="w-full">
+          <Tabs defaultValue="analysis" className="w-full">
             <div className="flex items-center justify-between mb-3">
               <TabsList>
-                <TabsTrigger value="prompts">Prompts</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                <TabsTrigger value="prompts">Prompts</TabsTrigger>
               </TabsList>
             </div>
-            <TabsContent value="prompts" className="mt-0">
-              <PromptGeneration artist={artist as any} initialAnalysis={initialAnalysis} />
-            </TabsContent>
             <TabsContent value="analysis" className="mt-0">
               <ArtistAnalysisResults analysis={initialAnalysis} artistName={artist.name} />
+            </TabsContent>
+            <TabsContent value="prompts" className="mt-0">
+              <PromptGeneration artist={artist as any} initialAnalysis={initialAnalysis} />
             </TabsContent>
           </Tabs>
         </div>
@@ -102,7 +110,9 @@ export function ArtistAnalysis({ artist, initialAnalysis }: ArtistAnalysisProps)
         <aside>
           <Accordion type="multiple" className="divide-y divide-neutral-200">
             <AccordionItem value="features">
-              <AccordionTrigger>Audio Features</AccordionTrigger>
+              <AccordionTrigger>
+                <div className="flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neutral-500" />Audio Features</div>
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3">
                   {audioFeatures.map((f) => (
@@ -115,26 +125,12 @@ export function ArtistAnalysis({ artist, initialAnalysis }: ArtistAnalysisProps)
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="tracks">
-              <AccordionTrigger>Top Tracks</AccordionTrigger>
+              <AccordionTrigger>
+                <div className="flex items-center gap-2"><ListMusic className="w-4 h-4 text-neutral-500" />Top Tracks</div>
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="max-h-72 overflow-y-auto pr-1">
                   <TopTracksList artistId={artist.spotifyId} limit={8} />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="profile">
-              <AccordionTrigger>Profile Details</AccordionTrigger>
-              <AccordionContent>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><div className="text-neutral-500 text-xs">Followers</div><div className="font-medium">{artist.followers.toLocaleString()}</div></div>
-                  <div><div className="text-neutral-500 text-xs">Popularity</div><div className="font-medium">{artist.popularity}/100</div></div>
-                  <div><div className="text-neutral-500 text-xs">Tempo</div><div className="font-medium">{Math.round(artist.audioFeatures.tempo)} BPM</div></div>
-                  <div><div className="text-neutral-500 text-xs">Key</div><div className="font-medium">{["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][artist.audioFeatures.key]}</div></div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {artist.genres.slice(0, 8).map((g) => (
-                    <Badge key={g} variant="secondary" className="rounded-full">{g}</Badge>
-                  ))}
                 </div>
               </AccordionContent>
             </AccordionItem>
