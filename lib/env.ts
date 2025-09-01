@@ -9,12 +9,7 @@ export const env = {
   // OpenAI for LLM
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
 
-  // GetSongBPM API (optional fallback for tempo/key)
-  GETSONGBPM_API_KEY: process.env.GETSONGBPM_API_KEY || "",
-
-  // RapidAPI Track Analysis
-  RAPIDAPI_KEY: process.env.RAPIDAPI_KEY || "",
-  RAPIDAPI_HOST: process.env.RAPIDAPI_HOST || "track-analysis.p.rapidapi.com",
+  // Note: Audio features now provided by ReccoBeats (no API key required)
 
   // App URL for redirects
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
@@ -69,17 +64,4 @@ export function assertOpenAIEnv() {
   }
 }
 
-export function assertGetSongBpmEnv() {
-  if (!env.GETSONGBPM_API_KEY) {
-    throw new Error("Missing required environment variable: GETSONGBPM_API_KEY")
-  }
-}
-
-export function assertRapidApiEnv() {
-  const missing: string[] = []
-  if (!env.RAPIDAPI_KEY) missing.push("RAPIDAPI_KEY")
-  if (!env.RAPIDAPI_HOST) missing.push("RAPIDAPI_HOST")
-  if (missing.length) {
-    throw new Error(`Missing required RapidAPI environment variables: ${missing.join(", ")}`)
-  }
-}
+// Note: Removed assertGetSongBpmEnv and assertRapidApiEnv since we use ReccoBeats now
