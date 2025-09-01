@@ -2,7 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { PromptGenerator } from "./prompt-generator"
+import { ArtistAnalysisResults } from "./artist-analysis-results"
+import { PromptGeneration } from "./prompt-generation"
 import { TopTracksList } from "./top-tracks-list"
 import type { Artist } from "@/lib/types"
 import { Music, Users, TrendingUp, ArrowLeft } from "lucide-react"
@@ -12,9 +13,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 interface ArtistAnalysisProps {
   artist: Artist
+  initialAnalysis?: any
 }
 
-export function ArtistAnalysis({ artist }: ArtistAnalysisProps) {
+export function ArtistAnalysis({ artist, initialAnalysis }: ArtistAnalysisProps) {
   const audioFeatures = [
     { name: "Energy", value: artist.audioFeatures.energy * 100, color: "bg-orange-500" },
     { name: "Danceability", value: artist.audioFeatures.danceability * 100, color: "bg-orange-400" },
@@ -88,47 +90,10 @@ export function ArtistAnalysis({ artist }: ArtistAnalysisProps) {
               </TabsList>
             </div>
             <TabsContent value="prompts" className="mt-0">
-              <PromptGenerator artist={artist as any} initialAnalysis={(artist as any).__initialAnalysis || null} />
+              <PromptGeneration artist={artist as any} initialAnalysis={initialAnalysis} />
             </TabsContent>
             <TabsContent value="analysis" className="mt-0">
-              {Boolean((artist as any).__initialAnalysis) ? (
-                <Card className="border-neutral-200 rounded-2xl shadow-sm">
-                  <CardHeader>
-                    <CardTitle>Musical Analysis</CardTitle>
-                    <CardDescription>AI analysis of {artist.name}'s style</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 text-sm text-neutral-700">
-                    <div>
-                      <h4 className="font-medium mb-2">Style Description</h4>
-                      <p className="text-neutral-700">{(artist as any).__initialAnalysis.styleDescription}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-2">Musical Analysis</h4>
-                      <p className="text-neutral-700">{(artist as any).__initialAnalysis.musicalAnalysis}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-2">Key Characteristics</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {(artist as any).__initialAnalysis.keyCharacteristics.map((c: string) => (
-                          <Badge key={c} variant="outline">{c}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-2">Suggested Moods</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {(artist as any).__initialAnalysis.suggestedMoods.map((m: string) => (
-                          <Badge key={m} variant="secondary">{m}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-neutral-200 rounded-2xl shadow-sm">
-                  <CardContent className="py-6 text-sm text-neutral-600">Analysis is being prepared…</CardContent>
-                </Card>
-              )}
+              <ArtistAnalysisResults analysis={initialAnalysis} artistName={artist.name} />
             </TabsContent>
           </Tabs>
         </div>

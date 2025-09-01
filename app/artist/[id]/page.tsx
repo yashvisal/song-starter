@@ -198,11 +198,11 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
     // Pass precomputed analysis into the prompt generator if available
     const initialAnalysis = (artist as any).__initialAnalysis || null
 
-    return (
-      <main className="bg-white text-neutral-900">
-        <ArtistAnalysis artist={artist} />
-      </main>
-    )
+          return (
+        <>
+          <ArtistAnalysis artist={artist} initialAnalysis={initialAnalysis} />
+        </>
+      )
   } catch (error) {
     console.log("[v0] Artist page error:", error)
     notFound()
