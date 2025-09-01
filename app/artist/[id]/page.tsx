@@ -176,6 +176,26 @@ async function getArtistData(spotifyId: string) {
       console.log("[v0] Using cached artist data")
     }
 
+    // Ensure we have initial analysis even when using cached artist data
+    if (!(artist as any).__initialAnalysis) {
+      try {
+        const initialAnalysis = await analyzeArtistAndGeneratePrompts({
+          name: artist.name,
+          genres: artist.genres,
+          popularity: artist.popularity,
+          followers: artist.followers,
+          imageUrl: artist.imageUrl,
+          spotifyId: artist.spotifyId,
+          audioFeatures: artist.audioFeatures,
+          createdAt: artist.createdAt,
+          updatedAt: artist.updatedAt,
+        } as any)
+        ;(artist as any).__initialAnalysis = initialAnalysis
+      } catch (err) {
+        console.log("[v0] Analysis generation failed:", err)
+      }
+    }
+
     return artist
   } catch (error) {
     console.log("[v0] Failed to get artist data:", error)
