@@ -138,7 +138,7 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
   // Initial state - no analysis yet
   if (viewState === "initial") {
     return (
-      <Card className="border-neutral-200 bg-white rounded-2xl">
+      <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
@@ -146,7 +146,7 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
           </CardTitle>
           <CardDescription>Analyzing {artist.name}'s style to generate ready-to-use prompts</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-6">
           <div className="flex items-center gap-2 text-sm text-neutral-600">
             <Loader2 className="w-4 h-4 animate-spin" />
             Generating initial prompts…
@@ -185,12 +185,12 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
     return (
       <div className="space-y-6">
         {/* Generated Prompts */}
-        <Card className="border-neutral-200 bg-white rounded-2xl">
+        <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
           <CardHeader>
             <CardTitle>Generated Prompts</CardTitle>
             <CardDescription>10 AI-generated music prompts ready for Suno AI</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-6">
             <div className="grid gap-3">
               {analysis.initialPrompts.map((prompt, index) => (
                 <div

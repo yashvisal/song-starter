@@ -23,12 +23,12 @@ export function ArtistAnalysisResults({ analysis, artistName }: ArtistAnalysisRe
   return (
     <div className="space-y-6">
       {/* Analysis Results */}
-      <Card className="border-neutral-200 bg-white rounded-2xl">
+      <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
         <CardHeader>
           <CardTitle>Musical Analysis</CardTitle>
           <CardDescription>AI analysis of {artistName}'s style</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pb-6">
           <div>
             <h4 className="font-medium mb-2 text-neutral-900">Style Description</h4>
             <p className="text-neutral-700 leading-relaxed">{analysis.styleDescription}</p>
