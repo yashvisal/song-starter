@@ -156,3 +156,60 @@ export async function getRecentGenerations(limit = 10): Promise<Generation[]> {
       : undefined,
   }))
 }
+
+export async function getLatestGenerationByArtistAndUser(
+  artistId: string,
+  userId?: string | null,
+): Promise<Generation | null> {
+  const result = await sql`
+    SELECT * FROM generations
+    WHERE artist_id = ${artistId}
+    ${userId ? sql`AND user_id = ${userId}` : sql``}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+
+  if (!result || result.length === 0) return null
+
+  const row = result[0]
+  return {
+    id: Number(row.id),
+    artistId: row.artist_id,
+    userQuestions: row.user_questions || [],
+    originalPrompts: row.original_prompts || [],
+    refinedPrompts: row.refined_prompts || [],
+    generationMetadata: row.generation_metadata || {},
+    createdAt: new Date(row.created_at),
+    userId: row.user_id || undefined,
+  }
+}
+
+export async function updateGenerationRefinement(params: {
+  generationId: number
+  refinedPrompts: string[]
+  userQuestions: any[]
+  generationMetadata: any
+}): Promise<Generation> {
+  const now = new Date()
+  const result = await sql`
+    UPDATE generations
+    SET refined_prompts = ${JSON.stringify(params.refinedPrompts)},
+        user_questions = ${JSON.stringify(params.userQuestions)},
+        generation_metadata = ${JSON.stringify(params.generationMetadata)},
+        created_at = created_at -- keep original timestamp; optional to add updated_at column
+    WHERE id = ${params.generationId}
+    RETURNING *
+  `
+
+  const row = result[0]
+  return {
+    id: Number(row.id),
+    artistId: row.artist_id,
+    userQuestions: row.user_questions || [],
+    originalPrompts: row.original_prompts || [],
+    refinedPrompts: row.refined_prompts || [],
+    generationMetadata: row.generation_metadata || {},
+    createdAt: new Date(row.created_at),
+    userId: row.user_id || undefined,
+  }
+}

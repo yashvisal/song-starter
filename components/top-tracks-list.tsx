@@ -11,15 +11,17 @@ interface TopTrack {
 interface TopTracksListProps {
   artistId: string
   limit?: number
+  tracksPrefetched?: Array<{ id: string; name: string }>
 }
 
-export function TopTracksList({ artistId, limit = 8 }: TopTracksListProps) {
-  const [tracks, setTracks] = useState<TopTrack[] | null>(null)
+export function TopTracksList({ artistId, limit = 8, tracksPrefetched }: TopTracksListProps) {
+  const [tracks, setTracks] = useState<TopTrack[] | null>(tracksPrefetched || null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function run() {
+      if (tracksPrefetched && tracksPrefetched.length) return
       try {
         const res = await fetch(`/api/artist-top-tracks/${artistId}?limit=${limit}`)
         const data = await res.json()
@@ -32,7 +34,7 @@ export function TopTracksList({ artistId, limit = 8 }: TopTracksListProps) {
     return () => {
       cancelled = true
     }
-  }, [artistId, limit])
+  }, [artistId, limit, tracksPrefetched])
 
   if (error) {
     return <div className="text-sm text-muted-foreground">{error}</div>

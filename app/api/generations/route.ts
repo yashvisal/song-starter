@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 import { validateGenerationsQuery } from "@/lib/validation"
+import { getLatestGenerationByArtistAndUser, updateGenerationRefinement } from "@/lib/database"
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -150,4 +151,14 @@ export async function POST(request: NextRequest) {
     console.error("Failed to save generation:", error)
     return NextResponse.json({ error: "Failed to save generation" }, { status: 500 })
   }
+}
+
+// New endpoint: GET /api/generations/latest?artistId=&user=
+export async function GET_LATEST(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const artistId = searchParams.get("artistId") || ""
+  const userId = searchParams.get("user") || undefined
+  if (!artistId) return NextResponse.json({ error: "artistId is required" }, { status: 400 })
+  const row = await getLatestGenerationByArtistAndUser(artistId, userId)
+  return NextResponse.json(row)
 }

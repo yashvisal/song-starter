@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Sparkles, Copy, Check } from "lucide-react"
+import { Loader2, Sparkles, Copy, Check, X } from "lucide-react"
+import * as Dialog from "@radix-ui/react-dialog"
 import { QuestionInterface } from "./question-interface"
 import { RefinedPrompts } from "./refined-prompts"
 import type { Artist, UserQuestion } from "@/lib/types"
@@ -26,6 +27,7 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
   const [refinedPrompts, setRefinedPrompts] = useState<string[]>([])
   const [generationId, setGenerationId] = useState<number>(0)
   const autoRunFor = useRef<string | null>(null)
+  const [showQuestions, setShowQuestions] = useState(false)
 
   const handleGeneratePrompts = async () => {
     setIsAnalyzing(true)
@@ -58,34 +60,10 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
     }
   }, [artist.spotifyId, initialAnalysis])
 
-  // Save initial generation once when analysis is ready
-  const savedInitialRef = useRef(false)
-  useEffect(() => {
-    async function saveInitial() {
-      if (!analysis || savedInitialRef.current) return
-      savedInitialRef.current = true
-      let userId = ""
-      try { userId = localStorage.getItem("suno_username") || "" } catch {}
-      try {
-        await fetch("/api/generations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            artistId: artist.id,
-            userId: userId || null,
-            userQuestions: [],
-            originalPrompts: analysis.initialPrompts,
-            refinedPrompts: [],
-            generationMetadata: { analysisData: analysis, timestamp: new Date().toISOString(), processingTime: 0, phase: "initial" },
-          }),
-        })
-      } catch {}
-    }
-    saveInitial()
-  }, [analysis, artist.id])
+  // Removed client-side initial persistence; should be done server-side
 
   const handlePersonalize = () => {
-    setViewState("questions")
+    setShowQuestions(true)
   }
 
   const handleQuestionsComplete = async (answers: UserQuestion[]) => {
@@ -100,6 +78,7 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
           artistId: artist.spotifyId,
           originalAnalysis: analysis,
           userAnswers: answers,
+          generationId: generationId || undefined,
         }),
       })
 
@@ -107,6 +86,9 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
         const result = await response.json()
         setRefinedPrompts(result.refinedPrompts)
         setGenerationId(result.generationId)
+        // persist in local state so tab switches keep refined view
+        setAnalysis((prev) => prev)
+        setShowQuestions(false)
         setViewState("refined")
       } else {
         console.error("Failed to refine prompts")
@@ -156,17 +138,7 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
     )
   }
 
-  // Questions interface
-  if (viewState === "questions" && analysis) {
-    return (
-      <QuestionInterface
-        questions={analysis.questions}
-        onComplete={handleQuestionsComplete}
-        onBack={handleBackToPrompts}
-        isRefining={isRefining}
-      />
-    )
-  }
+  // Questions interface now shown as modal; keep legacy path unused
 
   // Refined prompts view
   if (viewState === "refined") {
@@ -229,6 +201,26 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
             </div>
           </CardContent>
         </Card>
+
+        {/* Personalize modal */}
+        <Dialog.Root open={showQuestions} onOpenChange={setShowQuestions}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+            <Dialog.Content className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+              <div className="relative w-full max-w-2xl">
+                <Dialog.Title className="sr-only">Personalization Questions</Dialog.Title>
+                <Dialog.Description className="sr-only">Answer a few questions to refine your prompts</Dialog.Description>
+                <QuestionInterface
+                  questions={analysis.questions}
+                  onComplete={handleQuestionsComplete}
+                  onBack={() => setShowQuestions(false)}
+                  onClose={() => setShowQuestions(false)}
+                  isRefining={isRefining}
+                />
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       </div>
     )
   }
