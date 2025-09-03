@@ -52,39 +52,39 @@ export function PromptGenerator({ artist, initialAnalysis = null }: PromptGenera
     }
   }
 
-  // Auto-trigger initial prompt generation when the component mounts per artist
-  useEffect(() => {
-    if (autoRunFor.current !== artist.spotifyId && !analysis && !isAnalyzing && !initialAnalysis) {
-      autoRunFor.current = artist.spotifyId
-      handleGeneratePrompts()
-    }
-  }, [artist.spotifyId, initialAnalysis])
+  // Deprecated: server now provides analysis; avoid client auto-run to prevent extra LLM calls
+  // useEffect(() => {
+  //   if (autoRunFor.current !== artist.spotifyId && !analysis && !isAnalyzing && !initialAnalysis) {
+  //     autoRunFor.current = artist.spotifyId
+  //     handleGeneratePrompts()
+  //   }
+  // }, [artist.spotifyId, initialAnalysis])
 
-  // Save initial generation once when analysis is ready
-  const savedInitialRef = useRef(false)
-  useEffect(() => {
-    async function saveInitial() {
-      if (!analysis || savedInitialRef.current) return
-      savedInitialRef.current = true
-      let userId = ""
-      try { userId = localStorage.getItem("suno_username") || "" } catch {}
-      try {
-        await fetch("/api/generations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            artistId: artist.id,
-            userId: userId || null,
-            userQuestions: [],
-            originalPrompts: analysis.initialPrompts,
-            refinedPrompts: [],
-            generationMetadata: { analysisData: analysis, timestamp: new Date().toISOString(), processingTime: 0, phase: "initial" },
-          }),
-        })
-      } catch {}
-    }
-    saveInitial()
-  }, [analysis, artist.id])
+  // Deprecated: initial generation persistence is handled server-side; avoid duplicate rows
+  // const savedInitialRef = useRef(false)
+  // useEffect(() => {
+  //   async function saveInitial() {
+  //     if (!analysis || savedInitialRef.current) return
+  //     savedInitialRef.current = true
+  //     let userId = ""
+  //     try { userId = localStorage.getItem("suno_username") || "" } catch {}
+  //     try {
+  //       await fetch("/api/generations", {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           artistId: artist.id,
+  //           userId: userId || null,
+  //           userQuestions: [],
+  //           originalPrompts: analysis.initialPrompts,
+  //           refinedPrompts: [],
+  //           generationMetadata: { analysisData: analysis, timestamp: new Date().toISOString(), processingTime: 0, phase: "initial" },
+  //         }),
+  //       })
+  //     } catch {}
+  //   }
+  //   saveInitial()
+  // }, [analysis, artist.id])
 
   const handlePersonalize = () => {
     setViewState("questions")
