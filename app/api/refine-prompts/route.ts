@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { refinePromptsWithUserFeedback } from "@/lib/llm"
-import { getArtist, saveGeneration, updateGenerationRefinement } from "@/lib/database"
+import { getArtist, saveGeneration, updateGenerationRefinement, getLatestGenerationByArtistAndUser } from "@/lib/database"
 import { validateRefineRequest } from "@/lib/validation"
 import { assertOpenAIEnv, assertDatabaseEnv } from "@/lib/env"
 
@@ -30,9 +30,26 @@ export async function POST(request: NextRequest) {
     const refinedPrompts = await refinePromptsWithUserFeedback(artist, originalAnalysis, userAnswers)
 
     // Persist: update existing row when generationId provided; else create new
-    const generation = generationId
-      ? await updateGenerationRefinement({
-          generationId,
+    let generation
+    if (generationId) {
+      generation = await updateGenerationRefinement({
+        generationId,
+        refinedPrompts,
+        userQuestions: userAnswers,
+        generationMetadata: {
+          analysisData: originalAnalysis,
+          timestamp: new Date().toISOString(),
+          processingTime: Date.now(),
+          phase: "refined",
+        },
+        userId,
+      })
+    } else {
+      // Best-effort: update an existing row for this user/artist to avoid duplicates
+      const existing = await getLatestGenerationByArtistAndUser(artist.id, userId || null)
+      if (existing?.id) {
+        generation = await updateGenerationRefinement({
+          generationId: existing.id,
           refinedPrompts,
           userQuestions: userAnswers,
           generationMetadata: {
@@ -43,7 +60,8 @@ export async function POST(request: NextRequest) {
           },
           userId,
         })
-      : await saveGeneration({
+      } else {
+        generation = await saveGeneration({
           artistId: artist.id,
           userId,
           userQuestions: userAnswers,
@@ -56,6 +74,8 @@ export async function POST(request: NextRequest) {
             phase: "refined",
           },
         })
+      }
+    }
 
     console.log("[refine] Persisted refined prompts to DB", { id: generation.id })
     return NextResponse.json({ refinedPrompts, generationId: generation.id, generation })

@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation"
 import { spotifyAPI } from "@/lib/spotify"
-import { saveArtist, getArtist } from "@/lib/database"
+import { saveArtist, getArtist, getLatestGenerationByArtistAndUser, saveGeneration } from "@/lib/database"
 import { ArtistAnalysis } from "@/components/artist-analysis"
 import { analyzeArtistAndGeneratePrompts } from "@/lib/llm"
-import { PromptGenerator } from "@/components/prompt-generator"
 import type { AudioFeatures } from "@/lib/types"
 import { fetchAudioFeaturesReccoBeats } from "@/lib/reccobeats"
+import { cookies } from "next/headers"
 
 interface ArtistPageProps {
   params: Promise<{
@@ -162,6 +162,35 @@ async function getArtistData(spotifyId: string) {
 
         console.log("[v0] Saved artist to database")
         ;(artist as any).__initialAnalysis = initialAnalysis
+
+        // Persist initial analysis to generations to enable seamless hydration
+        try {
+          const cookieStore = await cookies()
+          const userId = cookieStore.get("suno_username")?.value
+          // Prefer user-scoped existing generation if logged-in user available
+          const existingUserScoped = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
+          // Fallback to artist-only existing generation
+          const existingArtistScoped = !existingUserScoped ? await getLatestGenerationByArtistAndUser(artist.id, null) : null
+
+          if (!existingUserScoped && !existingArtistScoped) {
+            const gen = await saveGeneration({
+              artistId: artist.id,
+              userId: userId || undefined,
+              userQuestions: [],
+              originalPrompts: initialAnalysis.initialPrompts,
+              refinedPrompts: [],
+              generationMetadata: {
+                analysisData: initialAnalysis,
+                timestamp: new Date().toISOString(),
+                processingTime: 0,
+                phase: "initial",
+              },
+            })
+            ;(artist as any).__initialGeneration = gen
+          } else {
+            ;(artist as any).__initialGeneration = existingUserScoped || existingArtistScoped
+          }
+        } catch {}
       } catch (spotifyError) {
         console.log("[v0] Spotify API error:", spotifyError)
         artist = await getArtist(spotifyId)
@@ -174,26 +203,21 @@ async function getArtistData(spotifyId: string) {
       }
     } else {
       console.log("[v0] Using cached artist data")
-    }
 
-    // Ensure we have initial analysis even when using cached artist data
-    if (!(artist as any).__initialAnalysis) {
+      // Hydrate initial analysis/generation from DB if available (prevents client flicker)
       try {
-        const initialAnalysis = await analyzeArtistAndGeneratePrompts({
-          name: artist.name,
-          genres: artist.genres,
-          popularity: artist.popularity,
-          followers: artist.followers,
-          imageUrl: artist.imageUrl,
-          spotifyId: artist.spotifyId,
-          audioFeatures: artist.audioFeatures,
-          createdAt: artist.createdAt,
-          updatedAt: artist.updatedAt,
-        } as any)
-        ;(artist as any).__initialAnalysis = initialAnalysis
-      } catch (err) {
-        console.log("[v0] Analysis generation failed:", err)
-      }
+        const cookieStore = await cookies()
+        const userId = cookieStore.get("suno_username")?.value
+        const latestUser = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
+        const latestArtist = !latestUser ? await getLatestGenerationByArtistAndUser(artist.id, null) : null
+        const latest = latestUser || latestArtist
+        if (latest?.generationMetadata?.analysisData) {
+          ;(artist as any).__initialAnalysis = latest.generationMetadata.analysisData
+        }
+        if (latest) {
+          ;(artist as any).__initialGeneration = latest
+        }
+      } catch {}
     }
 
     return artist
@@ -215,12 +239,13 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
       notFound()
     }
 
-    // Pass precomputed analysis into the prompt generator if available
+    // Pass precomputed analysis and initial generation into the analysis component
     const initialAnalysis = (artist as any).__initialAnalysis || null
+    const initialGeneration = (artist as any).__initialGeneration || null
 
           return (
         <>
-          <ArtistAnalysis artist={artist} initialAnalysis={initialAnalysis} />
+          <ArtistAnalysis artist={artist} initialAnalysis={initialAnalysis} initialGeneration={initialGeneration} />
         </>
       )
   } catch (error) {
