@@ -14,9 +14,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 interface ArtistAnalysisProps {
   artist: Artist
   initialAnalysis?: any
+  initialGeneration?: any
 }
 
-export function ArtistAnalysis({ artist, initialAnalysis }: ArtistAnalysisProps) {
+export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: ArtistAnalysisProps) {
   const audioFeatures = [
     { name: "Energy", value: artist.audioFeatures.energy * 100, color: "bg-orange-500" },
     { name: "Danceability", value: artist.audioFeatures.danceability * 100, color: "bg-orange-400" },
@@ -95,13 +96,23 @@ export function ArtistAnalysis({ artist, initialAnalysis }: ArtistAnalysisProps)
               <TabsList>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
                 <TabsTrigger value="prompts">Prompts</TabsTrigger>
+                <TabsTrigger value="refined">Personalize</TabsTrigger>
               </TabsList>
             </div>
             <TabsContent value="analysis" className="mt-0">
               <ArtistAnalysisResults analysis={initialAnalysis} artistName={artist.name} />
             </TabsContent>
             <TabsContent value="prompts" className="mt-0">
-              <PromptGeneration artist={artist as any} initialAnalysis={initialAnalysis} />
+              <PromptGeneration artist={artist as any} initialAnalysis={initialAnalysis} mode="prompts" />
+            </TabsContent>
+            <TabsContent value="refined" className="mt-0">
+              <PromptGeneration 
+                artist={artist as any} 
+                initialAnalysis={initialAnalysis} 
+                initialRefinedPrompts={initialGeneration?.refinedPrompts || []}
+                initialGenerationId={initialGeneration?.id || 0}
+                mode="personalize" 
+              />
             </TabsContent>
           </Tabs>
         </div>
