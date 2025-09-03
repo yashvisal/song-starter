@@ -32,31 +32,28 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      <Card className="border-neutral-200 bg-white rounded-2xl">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                Refined Prompts
-              </CardTitle>
+              <CardTitle>Refined Prompts</CardTitle>
               <CardDescription>Personalized music prompts for {artistName} based on your preferences</CardDescription>
             </div>
             <Badge variant="secondary">Generation #{generationId}</Badge>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3 mb-6">
+        <CardContent className="pb-6">
+          <div className="space-y-3">
             {prompts.map((prompt, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-start gap-3 p-4 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
               >
-                <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
+                <div className="flex-shrink-0 w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
                   {index + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm leading-relaxed">{prompt}</p>
+                  <p className="text-sm leading-relaxed text-neutral-800">{prompt}</p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => copyPrompt(prompt, index)} className="flex-shrink-0">
                   {copiedIndex === index ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
@@ -65,7 +62,7 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
+          <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-neutral-200">
             <Button variant="outline" onClick={onBack} className="gap-2 bg-transparent">
               <ArrowLeft className="w-4 h-4" />
               Generate New Prompts
@@ -96,19 +93,18 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
+      <Card className="border-neutral-200 bg-white rounded-2xl">
+        <CardHeader className="pb-4">
           <CardTitle className="text-lg">Ready for Suno AI</CardTitle>
           <CardDescription>
             These prompts are optimized for Suno AI. Copy any prompt and paste it directly into Suno to generate your
             music.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="bg-muted/50 rounded-lg p-4">
+        <CardContent className="pb-6">
+          <div className="bg-neutral-50 rounded-lg p-4">
             <h4 className="font-medium mb-2">Tips for best results:</h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
+            <ul className="text-sm text-neutral-600 space-y-1">
               <li>• Use prompts as-is or modify them to fit your vision</li>
               <li>• Try different prompts to explore various styles</li>
               <li>• Combine elements from multiple prompts for unique results</li>

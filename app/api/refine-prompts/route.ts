@@ -14,13 +14,19 @@ export async function POST(request: NextRequest) {
 
     const { artistId, originalAnalysis, userAnswers } = validateRefineRequest(body)
     const generationId = typeof (body as any)?.generationId === "number" ? (body as any).generationId : undefined
-    const userId = typeof body?.userId === "string" ? body.userId : undefined
+    // Try to resolve userId from body, then cookie
+    let userId = typeof body?.userId === "string" ? body.userId : undefined
+    const cookieHeader = request.headers.get("cookie") || ""
+    const cookieUser = /suno_username=([^;]+)/.exec(cookieHeader)?.[1]
+    // Prefer cookie for authoritative identity; fall back to body
+    userId = cookieUser || userId
 
     const artist = await getArtist(artistId)
     if (!artist) {
       return NextResponse.json({ error: "Artist not found" }, { status: 404 })
     }
 
+    console.log("[refine] Calling LLM refine")
     const refinedPrompts = await refinePromptsWithUserFeedback(artist, originalAnalysis, userAnswers)
 
     // Persist: update existing row when generationId provided; else create new
@@ -35,6 +41,7 @@ export async function POST(request: NextRequest) {
             processingTime: Date.now(),
             phase: "refined",
           },
+          userId,
         })
       : await saveGeneration({
           artistId: artist.id,
@@ -50,6 +57,7 @@ export async function POST(request: NextRequest) {
           },
         })
 
+    console.log("[refine] Persisted refined prompts to DB", { id: generation.id })
     return NextResponse.json({ refinedPrompts, generationId: generation.id, generation })
   } catch (error) {
     console.error("Prompt refinement error:", error)
