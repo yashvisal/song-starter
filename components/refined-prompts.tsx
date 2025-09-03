@@ -32,8 +32,8 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
 
   return (
     <div className="space-y-6">
-      <Card className="border-neutral-200 bg-white rounded-2xl">
-        <CardHeader className="pb-4">
+      <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
+        <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Refined Prompts</CardTitle>
@@ -43,7 +43,7 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
           </div>
         </CardHeader>
         <CardContent className="pb-6">
-          <div className="space-y-3">
+          <div className="grid gap-3">
             {prompts.map((prompt, index) => (
               <div
                 key={index}
@@ -55,7 +55,7 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
                 <div className="flex-1 min-w-0">
                   <p className="text-sm leading-relaxed text-neutral-800">{prompt}</p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => copyPrompt(prompt, index)} className="flex-shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => copyPrompt(prompt, index)} className="flex-shrink-0 hover:bg-neutral-100">
                   {copiedIndex === index ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
@@ -93,8 +93,8 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
           </div>
         </CardContent>
       </Card>
-      <Card className="border-neutral-200 bg-white rounded-2xl">
-        <CardHeader className="pb-4">
+      <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
+        <CardHeader>
           <CardTitle className="text-lg">Ready for Suno AI</CardTitle>
           <CardDescription>
             These prompts are optimized for Suno AI. Copy any prompt and paste it directly into Suno to generate your
