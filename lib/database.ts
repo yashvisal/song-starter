@@ -189,17 +189,31 @@ export async function updateGenerationRefinement(params: {
   refinedPrompts: string[]
   userQuestions: any[]
   generationMetadata: any
+  userId?: string
 }): Promise<Generation> {
   const now = new Date()
-  const result = await sql`
-    UPDATE generations
-    SET refined_prompts = ${JSON.stringify(params.refinedPrompts)},
-        user_questions = ${JSON.stringify(params.userQuestions)},
-        generation_metadata = ${JSON.stringify(params.generationMetadata)},
-        created_at = created_at -- keep original timestamp; optional to add updated_at column
-    WHERE id = ${params.generationId}
-    RETURNING *
-  `
+
+  // When a userId is provided, set user_id if it's currently null to ensure future lookups by user work
+  const result = params.userId
+    ? await sql`
+        UPDATE generations
+        SET refined_prompts = ${JSON.stringify(params.refinedPrompts)},
+            user_questions = ${JSON.stringify(params.userQuestions)},
+            generation_metadata = ${JSON.stringify(params.generationMetadata)},
+            user_id = COALESCE(user_id, ${params.userId}),
+            created_at = created_at -- keep original timestamp; optional to add updated_at column
+        WHERE id = ${params.generationId}
+        RETURNING *
+      `
+    : await sql`
+        UPDATE generations
+        SET refined_prompts = ${JSON.stringify(params.refinedPrompts)},
+            user_questions = ${JSON.stringify(params.userQuestions)},
+            generation_metadata = ${JSON.stringify(params.generationMetadata)},
+            created_at = created_at -- keep original timestamp; optional to add updated_at column
+        WHERE id = ${params.generationId}
+        RETURNING *
+      `
 
   const row = result[0]
   return {
