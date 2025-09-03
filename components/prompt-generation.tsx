@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,11 +14,14 @@ import type { AnalysisResult } from "@/lib/llm"
 interface PromptGenerationProps {
   artist: Artist
   initialAnalysis?: AnalysisResult | null
+  mode?: "prompts" | "personalize"
+  initialRefinedPrompts?: string[]
+  initialGenerationId?: number
 }
 
 type ViewState = "initial" | "prompts" | "questions" | "refined"
 
-export function PromptGeneration({ artist, initialAnalysis = null }: PromptGenerationProps) {
+export function PromptGeneration({ artist, initialAnalysis = null, mode = "prompts", initialRefinedPrompts = [], initialGenerationId = 0 }: PromptGenerationProps) {
   const [viewState, setViewState] = useState<ViewState>(initialAnalysis ? "prompts" : "initial")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
@@ -28,39 +31,102 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
   const [generationId, setGenerationId] = useState<number>(0)
   const autoRunFor = useRef<string | null>(null)
   const [showQuestions, setShowQuestions] = useState(false)
+  const [isHydratingLatest, setIsHydratingLatest] = useState(true)
 
-  const handleGeneratePrompts = async () => {
-    setIsAnalyzing(true)
-    try {
-      const response = await fetch("/api/analyze-artist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artistId: artist.spotifyId }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setAnalysis(result)
-        setViewState("prompts")
-      } else {
-        console.error("Failed to analyze artist")
-      }
-    } catch (error) {
-      console.error("Analysis error:", error)
-    } finally {
-      setIsAnalyzing(false)
-    }
-  }
+  // Removed client-side analysis LLM call; server should provide analysis
 
   // Auto-trigger initial prompt generation when the component mounts per artist
   useEffect(() => {
-    if (autoRunFor.current !== artist.spotifyId && !analysis && !isAnalyzing && !initialAnalysis) {
-      autoRunFor.current = artist.spotifyId
-      handleGeneratePrompts()
+    // If server provided analysis, set it; never call LLM here
+    if (initialAnalysis && !analysis) {
+      setAnalysis(initialAnalysis)
+      setViewState("prompts")
     }
-  }, [artist.spotifyId, initialAnalysis])
+  }, [initialAnalysis])
 
-  // Removed client-side initial persistence; should be done server-side
+  // If server pre-hydrated refined prompts, set them immediately to avoid flicker
+  useEffect(() => {
+    if (Array.isArray(initialRefinedPrompts) && initialRefinedPrompts.length > 0) {
+      setRefinedPrompts(initialRefinedPrompts)
+      if (!generationId && initialGenerationId) setGenerationId(initialGenerationId)
+      if (mode === "personalize") setViewState("refined")
+      // Persist to localStorage so client navigations can hydrate without flicker
+      try {
+        localStorage.setItem(`refined_prompts_${artist.id}`, JSON.stringify(initialRefinedPrompts))
+        if (initialGenerationId) localStorage.setItem(`generation_id_${artist.id}`, String(initialGenerationId))
+      } catch {}
+    }
+  }, [initialRefinedPrompts, initialGenerationId, mode])
+
+  // Pre-hydrate from localStorage before first paint to eliminate CTA→refined flicker in personalize mode
+  useLayoutEffect(() => {
+    if (mode !== "personalize") return
+    try {
+      const cached = localStorage.getItem(`refined_prompts_${artist.id}`)
+      const cachedGenId = localStorage.getItem(`generation_id_${artist.id}`)
+      if (cached) {
+        const arr = JSON.parse(cached)
+        if (Array.isArray(arr) && arr.length > 0) {
+          setRefinedPrompts(arr)
+          if (!generationId && cachedGenId) setGenerationId(Number(cachedGenId))
+          setViewState("refined")
+          setIsHydratingLatest(false)
+        }
+      }
+    } catch {}
+  }, [artist.id, mode])
+
+
+  // Fetch latest generation to hydrate analysis/prompts from DB.
+  // In prompts mode: request artist-scoped generation (no user param) to maximize hit rate.
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      try {
+        setIsHydratingLatest(true)
+        const params = new URLSearchParams()
+        params.set("artistId", artist.id)
+        if (mode === "personalize") {
+          try {
+            const u = localStorage.getItem("suno_username")
+            if (u) params.set("user", u)
+          } catch {}
+        }
+        const res = await fetch(`/api/generations/latest?${params.toString()}`)
+        if (!res.ok) return
+        const gen = await res.json()
+        if (cancelled || !gen) return
+        if (!generationId && gen.id) setGenerationId(Number(gen.id))
+        if (!analysis && gen.generationMetadata?.analysisData) {
+          setAnalysis(gen.generationMetadata.analysisData)
+          if (mode === "prompts") setViewState("prompts")
+        }
+        if (mode === "personalize") {
+          if (Array.isArray(gen.refinedPrompts) && gen.refinedPrompts.length > 0) {
+            setRefinedPrompts(gen.refinedPrompts)
+            setViewState("refined")
+          }
+        }
+      } catch {}
+      finally {
+        if (!cancelled) setIsHydratingLatest(false)
+      }
+    }
+    // Skip fetch if we already have refined prompts (SSR-provided) to avoid flicker
+    if (mode === "personalize" && refinedPrompts.length > 0) {
+      setIsHydratingLatest(false)
+      return
+    }
+    // In prompts mode, only fetch if analysis is missing
+    if (mode === "prompts" && analysis) {
+      setIsHydratingLatest(false)
+      return
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [artist.id, mode])
 
   const handlePersonalize = () => {
     setShowQuestions(true)
@@ -71,6 +137,8 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
 
     setIsRefining(true)
     try {
+      let userId = ""
+      try { userId = localStorage.getItem("suno_username") || "" } catch {}
       const response = await fetch("/api/refine-prompts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,6 +147,7 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
           originalAnalysis: analysis,
           userAnswers: answers,
           generationId: generationId || undefined,
+          userId: userId || undefined,
         }),
       })
 
@@ -88,6 +157,10 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
         setGenerationId(result.generationId)
         // persist in local state so tab switches keep refined view
         setAnalysis((prev) => prev)
+        try {
+          localStorage.setItem(`refined_prompts_${artist.id}`, JSON.stringify(result.refinedPrompts || []))
+          localStorage.setItem(`generation_id_${artist.id}`, String(result.generationId || 0))
+        } catch {}
         setShowQuestions(false)
         setViewState("refined")
       } else {
@@ -140,8 +213,8 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
 
   // Questions interface now shown as modal; keep legacy path unused
 
-  // Refined prompts view
-  if (viewState === "refined") {
+  // Refined prompts view (standalone or personalize tab hydrated)
+  if ((viewState === "refined" || mode === "personalize") && refinedPrompts.length > 0) {
     return (
       <RefinedPrompts
         prompts={refinedPrompts}
@@ -153,7 +226,7 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
   }
 
   // Generated prompts view
-  if (viewState === "prompts" && analysis) {
+  if (mode === "prompts" && viewState === "prompts" && analysis) {
     return (
       <div className="space-y-6">
         {/* Generated Prompts */}
@@ -203,6 +276,51 @@ export function PromptGeneration({ artist, initialAnalysis = null }: PromptGener
         </Card>
 
         {/* Personalize modal */}
+        <Dialog.Root open={showQuestions} onOpenChange={setShowQuestions}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+            <Dialog.Content className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+              <div className="relative w-full max-w-2xl">
+                <Dialog.Title className="sr-only">Personalization Questions</Dialog.Title>
+                <Dialog.Description className="sr-only">Answer a few questions to refine your prompts</Dialog.Description>
+                <QuestionInterface
+                  questions={analysis.questions}
+                  onComplete={handleQuestionsComplete}
+                  onBack={() => setShowQuestions(false)}
+                  onClose={() => setShowQuestions(false)}
+                  isRefining={isRefining}
+                />
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </div>
+    )
+  }
+
+  // Personalize tab: no refined prompts yet → CTA with modal
+  if (mode === "personalize" && refinedPrompts.length === 0 && analysis) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
+          <CardHeader>
+            <CardTitle>Personalize Your Prompts</CardTitle>
+            <CardDescription>Answer a few quick questions to tailor these prompts to your goals.</CardDescription>
+          </CardHeader>
+          <CardContent className="pb-6">
+            <div className="mt-2">
+              <Button onClick={handlePersonalize} className="w-full gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:brightness-110" size="lg">
+                <Sparkles className="w-5 h-5" />
+                Start Personalization
+              </Button>
+              <p className="text-sm text-neutral-600 text-center mt-2">
+                We’ll refine 10 prompts based on your choices. This takes just a minute.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Modal */}
         <Dialog.Root open={showQuestions} onOpenChange={setShowQuestions}>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
