@@ -165,7 +165,12 @@ export async function getLatestGenerationByArtistAndUser(
     SELECT * FROM generations
     WHERE artist_id = ${artistId}
     ${userId ? sql`AND user_id = ${userId}` : sql``}
-    ORDER BY created_at DESC
+    ORDER BY 
+      CASE 
+        WHEN refined_prompts IS NOT NULL AND jsonb_typeof(refined_prompts) = 'array' AND jsonb_array_length(refined_prompts) > 0 THEN 1 
+        ELSE 0 
+      END DESC,
+      created_at DESC
     LIMIT 1
   `
 
