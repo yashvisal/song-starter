@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +12,7 @@ import { Music, Users, TrendingUp, ArrowLeft, BarChart3, ListMusic } from "lucid
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import * as React from "react"
 
 interface ArtistAnalysisProps {
   artist: Artist
@@ -18,6 +21,13 @@ interface ArtistAnalysisProps {
 }
 
 export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: ArtistAnalysisProps) {
+  const [openValues, setOpenValues] = React.useState<string[]>(["features"]) // default open first
+  const allIds = ["features", "tracks"]
+  const allOpen = allIds.every((id) => openValues.includes(id))
+  const anyOpen = openValues.length > 0
+  const toggleAll = () => {
+    setOpenValues(allOpen ? [] : allIds)
+  }
   const audioFeatures = [
     { name: "Energy", value: artist.audioFeatures.energy * 100, color: "bg-orange-500" },
     { name: "Danceability", value: artist.audioFeatures.danceability * 100, color: "bg-orange-400" },
@@ -119,12 +129,22 @@ export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: A
 
         {/* Right-side accordion sidebar */}
         <aside>
-          <Accordion type="multiple" className="divide-y divide-neutral-200">
+          <div className="mb-3 inline-flex w-full items-center justify-between rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-sm">
+            <div className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600">Additional Info</div>
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="rounded-lg px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+            >
+              {allOpen ? "Collapse all" : "Expand all"}
+            </button>
+          </div>
+          <Accordion type="multiple" value={openValues} onValueChange={(v) => setOpenValues(v as string[])}>
             <AccordionItem value="features">
               <AccordionTrigger>
                 <div className="flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neutral-500" />Audio Features</div>
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent isOpen={openValues.includes("features")}>
                 <div className="space-y-3">
                   {audioFeatures.map((f) => (
                     <div key={f.name} className="space-y-1">
@@ -139,7 +159,7 @@ export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: A
               <AccordionTrigger>
                 <div className="flex items-center gap-2"><ListMusic className="w-4 h-4 text-neutral-500" />Top Tracks</div>
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent isOpen={openValues.includes("tracks")}>
                 <div className="max-h-72 overflow-y-auto pr-1">
                   <TopTracksList artistId={artist.spotifyId} limit={8} />
                 </div>
