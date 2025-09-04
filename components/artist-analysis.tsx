@@ -21,7 +21,7 @@ interface ArtistAnalysisProps {
 }
 
 export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: ArtistAnalysisProps) {
-  const [openValues, setOpenValues] = React.useState<string[]>(["features"]) // default open first
+  const [openValues, setOpenValues] = React.useState<string[]>([])
   const allIds = ["features", "tracks"]
   const allOpen = allIds.every((id) => openValues.includes(id))
   const anyOpen = openValues.length > 0
@@ -160,7 +160,7 @@ export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: A
                 <div className="flex items-center gap-2"><ListMusic className="w-4 h-4 text-neutral-500" />Top Tracks</div>
               </AccordionTrigger>
               <AccordionContent isOpen={openValues.includes("tracks")}>
-                <div className="max-h-72 overflow-y-auto pr-1">
+                <div className="pr-0">
                   <TopTracksList artistId={artist.spotifyId} limit={8} />
                 </div>
               </AccordionContent>
