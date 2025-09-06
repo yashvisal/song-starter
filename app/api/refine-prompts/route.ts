@@ -1,35 +1,84 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { refinePromptsWithUserFeedback } from "@/lib/llm"
-import { getArtist, saveGeneration } from "@/lib/database"
+import { getArtist, saveGeneration, updateGenerationRefinement, getLatestGenerationByArtistAndUser } from "@/lib/database"
 import { validateRefineRequest } from "@/lib/validation"
+import { assertOpenAIEnv, assertDatabaseEnv } from "@/lib/env"
 
 export async function POST(request: NextRequest) {
   try {
+    // Minimal env assertions for this endpoint
+    assertDatabaseEnv()
+    assertOpenAIEnv()
+
     const body = await request.json()
 
     const { artistId, originalAnalysis, userAnswers } = validateRefineRequest(body)
+    const generationId = typeof (body as any)?.generationId === "number" ? (body as any).generationId : undefined
+    // Try to resolve userId from body, then cookie
+    let userId = typeof body?.userId === "string" ? body.userId : undefined
+    const cookieHeader = request.headers.get("cookie") || ""
+    const cookieUser = /suno_username=([^;]+)/.exec(cookieHeader)?.[1]
+    // Prefer cookie for authoritative identity; fall back to body
+    userId = cookieUser || userId
 
     const artist = await getArtist(artistId)
     if (!artist) {
       return NextResponse.json({ error: "Artist not found" }, { status: 404 })
     }
 
+    console.log("[refine] Calling LLM refine")
     const refinedPrompts = await refinePromptsWithUserFeedback(artist, originalAnalysis, userAnswers)
 
-    // Save the generation to database
-    const generation = await saveGeneration({
-      artistId: artist.id,
-      userQuestions: userAnswers,
-      originalPrompts: originalAnalysis.initialPrompts,
-      refinedPrompts,
-      generationMetadata: {
-        analysisData: originalAnalysis,
-        timestamp: new Date().toISOString(),
-        processingTime: Date.now(),
-      },
-    })
+    // Persist: update existing row when generationId provided; else create new
+    let generation
+    if (generationId) {
+      generation = await updateGenerationRefinement({
+        generationId,
+        refinedPrompts,
+        userQuestions: userAnswers,
+        generationMetadata: {
+          analysisData: originalAnalysis,
+          timestamp: new Date().toISOString(),
+          processingTime: Date.now(),
+          phase: "refined",
+        },
+        userId,
+      })
+    } else {
+      // Best-effort: update an existing row for this user/artist to avoid duplicates
+      const existing = await getLatestGenerationByArtistAndUser(artist.id, userId || null)
+      if (existing?.id) {
+        generation = await updateGenerationRefinement({
+          generationId: existing.id,
+          refinedPrompts,
+          userQuestions: userAnswers,
+          generationMetadata: {
+            analysisData: originalAnalysis,
+            timestamp: new Date().toISOString(),
+            processingTime: Date.now(),
+            phase: "refined",
+          },
+          userId,
+        })
+      } else {
+        generation = await saveGeneration({
+          artistId: artist.id,
+          userId,
+          userQuestions: userAnswers,
+          originalPrompts: originalAnalysis.initialPrompts,
+          refinedPrompts,
+          generationMetadata: {
+            analysisData: originalAnalysis,
+            timestamp: new Date().toISOString(),
+            processingTime: Date.now(),
+            phase: "refined",
+          },
+        })
+      }
+    }
 
-    return NextResponse.json({ refinedPrompts, generationId: generation.id })
+    console.log("[refine] Persisted refined prompts to DB", { id: generation.id })
+    return NextResponse.json({ refinedPrompts, generationId: generation.id, generation })
   } catch (error) {
     console.error("Prompt refinement error:", error)
 

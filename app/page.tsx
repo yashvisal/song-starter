@@ -1,96 +1,78 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ArtistSearch } from "@/components/artist-search"
-import { RecentGenerations } from "@/components/recent-generations"
-import { Search, Music, GalleryThumbnailsIcon as Gallery } from "lucide-react"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { UserNameChip } from "@/components/UserNameChip"
+import { HomeHero } from "@/components/home-hero"
+import { HomeGallery } from "@/components/home-gallery"
+import { SamplePrompts } from "@/components/sample-prompts"
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <Music className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Suno Producer Test!</h1>
-                <p className="text-sm text-muted-foreground">AI Music Prompt Generator</p>
-              </div>
-            </div>
+    <main className="min-h-screen bg-white text-neutral-900">
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/80 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded bg-gradient-to-br from-orange-500 to-orange-600" />
+            <span className="font-medium tracking-tight">Suno Producer</span>
+          </div>
+          <nav className="flex items-center gap-4 md:gap-6 text-sm text-neutral-600">
+            <a href="#gallery" className="hover:text-neutral-900">Gallery</a>
+            <UserNameChip />
             <Link href="/gallery">
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <Gallery className="w-4 h-4" />
+              <Button className="h-9 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 hover:brightness-110">
                 Browse Gallery
               </Button>
             </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-12">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-foreground mb-4">Create Personalized Music with AI</h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Analyze any Spotify artist and generate custom AI music prompts tailored to their style and your creative
-            vision.
-          </p>
+      {/* Hero + Search */}
+      <HomeHero />
+
+      {/* Gallery (light version with modal) */}
+      <HomeGallery />
+
+      {/* Sample prompts (removable) */}
+      <SamplePrompts />
+
+      {/* FAQ (removable) */}
+      <section className="mx-auto max-w-3xl px-4 py-16">
+        {/* REMOVABLE_SECTION_START: FAQ */}
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-2xl md:text-3xl font-semibold text-neutral-900">FAQ</h2>
         </div>
-
-        {/* Artist Search Section */}
-        <Card className="max-w-2xl mx-auto mb-12">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="w-5 h-5" />
-              Search Artist
-            </CardTitle>
-            <CardDescription>Enter a Spotify artist name to begin analyzing their musical style</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ArtistSearch />
-          </CardContent>
-        </Card>
-
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Deep Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Extract audio features, genres, and musical patterns from Spotify data
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">AI Personalization</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Answer interactive questions to refine and personalize your music prompts
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Ready for Suno</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Get 10 diverse, production-ready prompts optimized for Suno AI</p>
-            </CardContent>
-          </Card>
+        <div className="mt-6 divide-y divide-neutral-200 rounded-2xl border border-neutral-200 bg-white">
+          {[
+            { q: "Do I need Spotify Premium?", a: "No—Suno Producer uses public artist data from Spotify's Web API." },
+            { q: "Do I need a Suno account?", a: "You’ll paste prompts into Suno to generate music." },
+            { q: "Are these prompts deterministic?", a: "No—prompts are LLM‑driven for creative variety." },
+            { q: "Are you affiliated with Spotify or Suno?", a: "No—this is an independent tool. Prompts are ‘inspired by’ public musical traits." },
+          ].map((item, i) => (
+            <details key={i} className="group px-5 py-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">
+                <span>{item.q}</span>
+                <span className="text-neutral-500 transition group-open:rotate-180">⌄</span>
+              </summary>
+              <p className="mt-2 text-sm text-neutral-600">{item.a}</p>
+            </details>
+          ))}
         </div>
+        {/* REMOVABLE_SECTION_END */}
+      </section>
 
-        {/* Recent Generations Preview */}
-        <RecentGenerations />
-      </main>
-    </div>
+      {/* Footer */}
+      <footer className="border-t border-neutral-200 py-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-neutral-600 md:flex-row">
+          <div>© {new Date().getFullYear()} Suno Producer</div>
+          <div className="flex items-center gap-6">
+            <a href="#gallery" className="hover:text-neutral-900">Gallery</a>
+            <a href="#preview" className="hover:text-neutral-900">Samples</a>
+            <a href="#" className="hover:text-neutral-900">FAQ</a>
+          </div>
+          <div className="text-xs">Prompts are “inspired by” public musical traits. Not affiliated with Spotify or Suno.</div>
+        </div>
+      </footer>
+    </main>
   )
 }

@@ -22,21 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dmSans.variable} antialiased`}>
-      <body className="font-sans">
-        <div className="min-h-screen flex flex-col">
-          <div className="flex-1">{children}</div>
-          <footer className="border-t border-border bg-card">
-            <div className="container mx-auto px-4 py-6 text-sm flex items-center justify-between">
-              <p className="text-muted-foreground">
-                Analysis powered by{' '}
-                <a href="https://getsongbpm.com" className="underline hover:text-foreground">
-                  GetSongBPM
-                </a>
-              </p>
-            </div>
-          </footer>
-        </div>
-      </body>
+      <body className="font-sans overflow-y-scroll">{children}</body>
     </html>
   )
 }

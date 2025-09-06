@@ -26,6 +26,9 @@ export interface AudioFeatures {
   key: number
   mode: number
   time_signature: number
+  // Optional extras from Track Analysis API (averaged across tracks)
+  popularity?: number // 0..100
+  duration_ms?: number // average duration in milliseconds
 }
 
 export interface Artist {
@@ -61,5 +64,13 @@ export interface Generation {
     processingTime: number
   }
   createdAt: Date
-  artist?: Artist
+  artist?: ArtistSummary
+  userId?: string
+}
+
+export interface ArtistSummary {
+  id: string
+  name: string
+  imageUrl: string
+  genres: string[]
 }

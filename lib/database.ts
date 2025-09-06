@@ -79,29 +79,49 @@ export async function saveGeneration(generationData: {
   originalPrompts: string[]
   refinedPrompts: string[]
   generationMetadata: any
+  userId?: string
 }): Promise<Generation> {
   const now = new Date()
 
-  const result = await sql`
-    INSERT INTO generations (
-      artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
-    ) VALUES (
-      ${generationData.artistId}, ${JSON.stringify(generationData.userQuestions)}, 
-      ${JSON.stringify(generationData.originalPrompts)}, ${JSON.stringify(generationData.refinedPrompts)}, 
-      ${JSON.stringify(generationData.generationMetadata)}, ${now}
-    )
-    RETURNING *
-  `
+  let result
+  try {
+    result = await sql`
+      INSERT INTO generations (
+        artist_id, user_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+      ) VALUES (
+        ${generationData.artistId}, ${generationData.userId || null}, ${JSON.stringify(generationData.userQuestions)}, 
+        ${JSON.stringify(generationData.originalPrompts)}, ${JSON.stringify(generationData.refinedPrompts)}, 
+        ${JSON.stringify(generationData.generationMetadata)}, ${now}
+      )
+      RETURNING *
+    `
+  } catch (e: any) {
+    if (String(e?.message || e).includes("user_id")) {
+      result = await sql`
+        INSERT INTO generations (
+          artist_id, user_questions, original_prompts, refined_prompts, generation_metadata, created_at
+        ) VALUES (
+          ${generationData.artistId}, ${JSON.stringify(generationData.userQuestions)}, 
+          ${JSON.stringify(generationData.originalPrompts)}, ${JSON.stringify(generationData.refinedPrompts)}, 
+          ${JSON.stringify(generationData.generationMetadata)}, ${now}
+        )
+        RETURNING *
+      `
+    } else {
+      throw e
+    }
+  }
 
   const generation = result[0]
   return {
-    id: generation.id.toString(),
+    id: Number(generation.id),
     artistId: generation.artist_id,
+    userId: generation.user_id,
     userQuestions: generation.user_questions,
     originalPrompts: generation.original_prompts,
     refinedPrompts: generation.refined_prompts,
     generationMetadata: generation.generation_metadata,
-    createdAt: generation.created_at,
+    createdAt: new Date(generation.created_at),
   }
 }
 
@@ -119,13 +139,13 @@ export async function getRecentGenerations(limit = 10): Promise<Generation[]> {
   `
 
   return result.map((row) => ({
-    id: row.id.toString(),
+    id: Number(row.id),
     artistId: row.artist_id,
     userQuestions: row.user_questions || [],
     originalPrompts: row.original_prompts || [],
     refinedPrompts: row.refined_prompts || [],
     generationMetadata: row.generation_metadata || {},
-    createdAt: row.created_at,
+    createdAt: new Date(row.created_at),
     artist: row.artist_name
       ? {
           id: row.artist_id,
@@ -135,4 +155,80 @@ export async function getRecentGenerations(limit = 10): Promise<Generation[]> {
         }
       : undefined,
   }))
+}
+
+export async function getLatestGenerationByArtistAndUser(
+  artistId: string,
+  userId?: string | null,
+): Promise<Generation | null> {
+  const result = await sql`
+    SELECT * FROM generations
+    WHERE artist_id = ${artistId}
+    ${userId ? sql`AND user_id = ${userId}` : sql``}
+    ORDER BY 
+      CASE 
+        WHEN refined_prompts IS NOT NULL AND jsonb_typeof(refined_prompts) = 'array' AND jsonb_array_length(refined_prompts) > 0 THEN 1 
+        ELSE 0 
+      END DESC,
+      created_at DESC
+    LIMIT 1
+  `
+
+  if (!result || result.length === 0) return null
+
+  const row = result[0]
+  return {
+    id: Number(row.id),
+    artistId: row.artist_id,
+    userQuestions: row.user_questions || [],
+    originalPrompts: row.original_prompts || [],
+    refinedPrompts: row.refined_prompts || [],
+    generationMetadata: row.generation_metadata || {},
+    createdAt: new Date(row.created_at),
+    userId: row.user_id || undefined,
+  }
+}
+
+export async function updateGenerationRefinement(params: {
+  generationId: number
+  refinedPrompts: string[]
+  userQuestions: any[]
+  generationMetadata: any
+  userId?: string
+}): Promise<Generation> {
+  const now = new Date()
+
+  // When a userId is provided, set user_id if it's currently null to ensure future lookups by user work
+  const result = params.userId
+    ? await sql`
+        UPDATE generations
+        SET refined_prompts = ${JSON.stringify(params.refinedPrompts)},
+            user_questions = ${JSON.stringify(params.userQuestions)},
+            generation_metadata = ${JSON.stringify(params.generationMetadata)},
+            user_id = COALESCE(user_id, ${params.userId}),
+            created_at = created_at -- keep original timestamp; optional to add updated_at column
+        WHERE id = ${params.generationId}
+        RETURNING *
+      `
+    : await sql`
+        UPDATE generations
+        SET refined_prompts = ${JSON.stringify(params.refinedPrompts)},
+            user_questions = ${JSON.stringify(params.userQuestions)},
+            generation_metadata = ${JSON.stringify(params.generationMetadata)},
+            created_at = created_at -- keep original timestamp; optional to add updated_at column
+        WHERE id = ${params.generationId}
+        RETURNING *
+      `
+
+  const row = result[0]
+  return {
+    id: Number(row.id),
+    artistId: row.artist_id,
+    userQuestions: row.user_questions || [],
+    originalPrompts: row.original_prompts || [],
+    refinedPrompts: row.refined_prompts || [],
+    generationMetadata: row.generation_metadata || {},
+    createdAt: new Date(row.created_at),
+    userId: row.user_id || undefined,
+  }
 }

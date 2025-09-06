@@ -1,3 +1,5 @@
+import type { AnalysisResult } from "./llm"
+import type { UserQuestion } from "./types"
 export interface SearchArtistsQuery {
   q: string
 }
@@ -8,19 +10,8 @@ export interface AnalyzeArtistRequest {
 
 export interface RefinePromptsRequest {
   artistId: string
-  originalAnalysis: {
-    initialPrompts: string[]
-    questions: Array<{
-      id: string
-      question: string
-      type: string
-      options?: string[]
-    }>
-  }
-  userAnswers: Array<{
-    questionId: string
-    answer: string | string[]
-  }>
+  originalAnalysis: AnalysisResult
+  userAnswers: UserQuestion[]
 }
 
 export interface GenerationsQuery {
@@ -108,5 +99,5 @@ export function validateGenerationsQuery(searchParams: URLSearchParams): Generat
     throw new Error("search query must be less than 100 characters")
   }
 
-  return { search: search || undefined, limit, offset }
+  return { search: search ?? undefined, limit: limit ?? undefined, offset: offset ?? undefined }
 }

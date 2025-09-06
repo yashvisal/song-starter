@@ -1,13 +1,16 @@
 import { notFound } from "next/navigation"
 import { spotifyAPI } from "@/lib/spotify"
-import { saveArtist, getArtist } from "@/lib/database"
+import { saveArtist, getArtist, getLatestGenerationByArtistAndUser, saveGeneration } from "@/lib/database"
 import { ArtistAnalysis } from "@/components/artist-analysis"
+import { analyzeArtistAndGeneratePrompts } from "@/lib/llm"
 import type { AudioFeatures } from "@/lib/types"
+import { fetchAudioFeaturesReccoBeats } from "@/lib/reccobeats"
+import { cookies } from "next/headers"
 
 interface ArtistPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 async function getArtistData(spotifyId: string) {
@@ -29,29 +32,22 @@ async function getArtistData(spotifyId: string) {
 
         console.log("[v0] Got artist and top tracks:", spotifyArtist.name, topTracks.length)
 
-        // Get audio features for top tracks
-        const trackIds = topTracks
-          .slice(0, 10)
-          .map((track) => track.id)
-          .filter(Boolean)
-        console.log("[v0] Getting audio features for track IDs:", trackIds.length)
-
-        if (trackIds.length === 0) {
-          throw new Error("No valid track IDs found")
-        }
-
-        let audioFeatures: any[] = []
-        try {
-          audioFeatures = await spotifyAPI.getAudioFeatures(trackIds)
-          console.log("[v0] Got audio features:", audioFeatures.length)
-        } catch (audioError) {
-          console.log("[v0] Audio features failed, using empty array:", audioError)
-          // If audio features completely fail, we'll use default values
-          audioFeatures = []
-        }
-
-        // Audio features will always be returned (either real or fallback)
-        const validFeatures = audioFeatures.filter(Boolean)
+        // Get audio features for top tracks via ReccoBeats (much faster!)
+        const tracksToAnalyze = topTracks.slice(0, 8)
+        const trackIds = tracksToAnalyze.map(track => track.id)
+        const trackInfo = tracksToAnalyze.map(track => ({
+          id: track.id,
+          name: track.name,
+          artist: track.artists?.[0]?.name || 'Unknown Artist'
+        }))
+        
+        console.log(`[v0] Starting audio feature analysis for ${tracksToAnalyze.length} top tracks:`)
+        tracksToAnalyze.forEach((track, index) => {
+          console.log(`  ${index + 1}. ${track.name} - ${track.artists?.[0]?.name || 'Unknown'} (${track.id})`)
+        })
+        
+        const validFeatures = await fetchAudioFeaturesReccoBeats(trackIds, trackInfo)
+        console.log(`[v0] Audio feature analysis complete: ${validFeatures.length}/${trackIds.length} tracks successful`)
 
         let avgFeatures: AudioFeatures
         if (validFeatures.length > 0) {
@@ -59,16 +55,34 @@ async function getArtistData(spotifyId: string) {
           avgFeatures = validFeatures.reduce(
             (acc, features, index) => {
               if (features) {
-                Object.keys(features).forEach((key) => {
-                  const value = features[key as keyof AudioFeatures]
+                ;(
+                  [
+                    "acousticness",
+                    "danceability",
+                    "energy",
+                    "instrumentalness",
+                    "liveness",
+                    "loudness",
+                    "speechiness",
+                    "tempo",
+                    "valence",
+                    "key",
+                    "mode",
+                    "time_signature",
+                  ] as Array<keyof AudioFeatures>
+                ).forEach((key) => {
+                  const value = (features as any)[key]
                   if (typeof value === "number" && !isNaN(value)) {
                     if (index === 0) {
-                      acc[key as keyof AudioFeatures] = value
+                      ;(acc as any)[key] = value
                     } else {
-                      acc[key as keyof AudioFeatures] = (acc[key as keyof AudioFeatures] * index + value) / (index + 1)
+                      const prev = (acc as any)[key] as number
+                      ;(acc as any)[key] = (prev * index + value) / (index + 1)
                     }
                   }
                 })
+                // Note: ReccoBeats doesn't provide popularity or duration_ms
+                // These fields will remain undefined
               }
               return acc
             },
@@ -105,7 +119,35 @@ async function getArtistData(spotifyId: string) {
           } as AudioFeatures
         }
 
-        console.log("[v0] Calculated average features:", avgFeatures)
+        // Sanitize averaged fields to valid ranges/integers
+        avgFeatures.key = Math.max(0, Math.min(11, Math.round(avgFeatures.key)))
+        avgFeatures.mode = avgFeatures.mode >= 0.5 ? 1 : 0
+        avgFeatures.time_signature = [3, 4].includes(Math.round(avgFeatures.time_signature))
+          ? Math.round(avgFeatures.time_signature)
+          : 4
+
+        console.log("[v0] Calculated average features from", validFeatures.length, "tracks:")
+        console.log("  Final averages:", {
+          energy: `${(avgFeatures.energy * 100).toFixed(1)}%`,
+          danceability: `${(avgFeatures.danceability * 100).toFixed(1)}%`,
+          valence: `${(avgFeatures.valence * 100).toFixed(1)}%`,
+          tempo: `${avgFeatures.tempo.toFixed(1)} BPM`,
+          key: avgFeatures.key,
+          mode: avgFeatures.mode === 1 ? 'Major' : 'Minor',
+          acousticness: `${(avgFeatures.acousticness * 100).toFixed(1)}%`,
+          loudness: `${avgFeatures.loudness.toFixed(1)} dB`
+        })
+
+        // Precompute LLM analysis so the page renders with prompts ready
+        const initialAnalysis = await analyzeArtistAndGeneratePrompts({
+          ...spotifyArtist,
+          spotifyId: spotifyArtist.id,
+          imageUrl: spotifyArtist.images?.[0]?.url || "",
+          followers: spotifyArtist.followers?.total || 0,
+          audioFeatures: avgFeatures,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any)
 
         // Save to database
         artist = await saveArtist({
@@ -119,6 +161,36 @@ async function getArtistData(spotifyId: string) {
         })
 
         console.log("[v0] Saved artist to database")
+        ;(artist as any).__initialAnalysis = initialAnalysis
+
+        // Persist initial analysis to generations to enable seamless hydration
+        try {
+          const cookieStore = await cookies()
+          const userId = cookieStore.get("suno_username")?.value
+          // Prefer user-scoped existing generation if logged-in user available
+          const existingUserScoped = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
+          // Fallback to artist-only existing generation
+          const existingArtistScoped = !existingUserScoped ? await getLatestGenerationByArtistAndUser(artist.id, null) : null
+
+          if (!existingUserScoped && !existingArtistScoped) {
+            const gen = await saveGeneration({
+              artistId: artist.id,
+              userId: userId || undefined,
+              userQuestions: [],
+              originalPrompts: initialAnalysis.initialPrompts,
+              refinedPrompts: [],
+              generationMetadata: {
+                analysisData: initialAnalysis,
+                timestamp: new Date().toISOString(),
+                processingTime: 0,
+                phase: "initial",
+              },
+            })
+            ;(artist as any).__initialGeneration = gen
+          } else {
+            ;(artist as any).__initialGeneration = existingUserScoped || existingArtistScoped
+          }
+        } catch {}
       } catch (spotifyError) {
         console.log("[v0] Spotify API error:", spotifyError)
         artist = await getArtist(spotifyId)
@@ -131,6 +203,21 @@ async function getArtistData(spotifyId: string) {
       }
     } else {
       console.log("[v0] Using cached artist data")
+
+      // Hydrate initial analysis/generation from DB if available (prevents client flicker)
+      try {
+        const cookieStore = await cookies()
+        const userId = cookieStore.get("suno_username")?.value
+        const latestUser = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
+        const latestArtist = !latestUser ? await getLatestGenerationByArtistAndUser(artist.id, null) : null
+        const latest = latestUser || latestArtist
+        if (latest?.generationMetadata?.analysisData) {
+          ;(artist as any).__initialAnalysis = latest.generationMetadata.analysisData
+        }
+        if (latest) {
+          ;(artist as any).__initialGeneration = latest
+        }
+      } catch {}
     }
 
     return artist
@@ -145,13 +232,22 @@ async function getArtistData(spotifyId: string) {
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
   try {
-    const artist = await getArtistData(params.id)
+    const { id } = await params
+    const artist = await getArtistData(id)
 
     if (!artist) {
       notFound()
     }
 
-    return <ArtistAnalysis artist={artist} />
+    // Pass precomputed analysis and initial generation into the analysis component
+    const initialAnalysis = (artist as any).__initialAnalysis || null
+    const initialGeneration = (artist as any).__initialGeneration || null
+
+          return (
+        <>
+          <ArtistAnalysis artist={artist} initialAnalysis={initialAnalysis} initialGeneration={initialGeneration} />
+        </>
+      )
   } catch (error) {
     console.log("[v0] Artist page error:", error)
     notFound()

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,18 +12,22 @@ import type { AnalysisResult } from "@/lib/llm"
 
 interface PromptGeneratorProps {
   artist: Artist
+  initialAnalysis?: AnalysisResult | null
 }
 
 type ViewState = "initial" | "analysis" | "questions" | "refined"
 
-export function PromptGenerator({ artist }: PromptGeneratorProps) {
-  const [viewState, setViewState] = useState<ViewState>("initial")
+export function PromptGenerator({ artist, initialAnalysis = null }: PromptGeneratorProps) {
+  const [viewState, setViewState] = useState<ViewState>(initialAnalysis ? "analysis" : "initial")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(initialAnalysis)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [refinedPrompts, setRefinedPrompts] = useState<string[]>([])
   const [generationId, setGenerationId] = useState<number>(0)
+  const autoRunFor = useRef<string | null>(null)
+
+  // If server provided analysis, show it immediately (state already initialized)
 
   const handleGeneratePrompts = async () => {
     setIsAnalyzing(true)
@@ -47,6 +51,40 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
       setIsAnalyzing(false)
     }
   }
+
+  // Deprecated: server now provides analysis; avoid client auto-run to prevent extra LLM calls
+  // useEffect(() => {
+  //   if (autoRunFor.current !== artist.spotifyId && !analysis && !isAnalyzing && !initialAnalysis) {
+  //     autoRunFor.current = artist.spotifyId
+  //     handleGeneratePrompts()
+  //   }
+  // }, [artist.spotifyId, initialAnalysis])
+
+  // Deprecated: initial generation persistence is handled server-side; avoid duplicate rows
+  // const savedInitialRef = useRef(false)
+  // useEffect(() => {
+  //   async function saveInitial() {
+  //     if (!analysis || savedInitialRef.current) return
+  //     savedInitialRef.current = true
+  //     let userId = ""
+  //     try { userId = localStorage.getItem("suno_username") || "" } catch {}
+  //     try {
+  //       await fetch("/api/generations", {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           artistId: artist.id,
+  //           userId: userId || null,
+  //           userQuestions: [],
+  //           originalPrompts: analysis.initialPrompts,
+  //           refinedPrompts: [],
+  //           generationMetadata: { analysisData: analysis, timestamp: new Date().toISOString(), processingTime: 0, phase: "initial" },
+  //         }),
+  //       })
+  //     } catch {}
+  //   }
+  //   saveInitial()
+  // }, [analysis, artist.id])
 
   const handlePersonalize = () => {
     setViewState("questions")
@@ -102,28 +140,19 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
   // Initial state - no analysis yet
   if (viewState === "initial") {
     return (
-      <Card>
+      <Card className="border-neutral-200 rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
-            AI Prompt Generation
+            Preparing Prompts
           </CardTitle>
-          <CardDescription>Generate personalized music prompts based on {artist.name}'s style</CardDescription>
+          <CardDescription>Analyzing {artist.name}'s style to generate ready-to-use prompts</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleGeneratePrompts} disabled={isAnalyzing} size="lg" className="w-full gap-2">
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Analyzing {artist.name}...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5" />
-                Generate AI Prompts
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Generating initial prompts…
+          </div>
         </CardContent>
       </Card>
     )
@@ -158,7 +187,7 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
     return (
       <div className="space-y-6">
         {/* Analysis Results */}
-        <Card>
+        <Card className="border-neutral-200 rounded-2xl shadow-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -200,7 +229,7 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
         </Card>
 
         {/* Generated Prompts */}
-        <Card>
+        <Card className="border-neutral-200 rounded-2xl shadow-sm">
           <CardHeader>
             <CardTitle>Generated Prompts</CardTitle>
             <CardDescription>10 AI-generated music prompts ready for Suno AI</CardDescription>
@@ -229,7 +258,7 @@ export function PromptGenerator({ artist }: PromptGeneratorProps) {
               ))}
             </div>
             <div className="mt-6 pt-6 border-t border-border">
-              <Button onClick={handlePersonalize} className="w-full gap-2" size="lg">
+              <Button onClick={handlePersonalize} className="w-full gap-2 rounded-xl" size="lg">
                 <Sparkles className="w-5 h-5" />
                 Personalize These Prompts
               </Button>
