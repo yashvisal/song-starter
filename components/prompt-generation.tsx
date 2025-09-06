@@ -163,6 +163,16 @@ export function PromptGeneration({ artist, initialAnalysis = null, mode = "promp
         } catch {}
         setShowQuestions(false)
         setViewState("refined")
+        // Redirect outer tabs to the Personalize tab
+        try {
+          const url = new URL(window.location.href)
+          url.searchParams.set("tab", "refined")
+          window.history.replaceState({}, "", url.toString())
+        } catch {}
+        try {
+          const evt = new CustomEvent("switch-tab", { detail: { value: "refined" } })
+          window.dispatchEvent(evt)
+        } catch {}
       } else {
         console.error("Failed to refine prompts")
       }

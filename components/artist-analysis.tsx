@@ -10,6 +10,7 @@ import { TopTracksList } from "./top-tracks-list"
 import type { Artist } from "@/lib/types"
 import { Music, Users, TrendingUp, ArrowLeft, BarChart3, ListMusic } from "lucide-react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import * as React from "react"
@@ -21,6 +22,30 @@ interface ArtistAnalysisProps {
 }
 
 export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: ArtistAnalysisProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams.get("tab") as string) || "analysis"
+  const [tab, setTab] = React.useState<string>(initialTab)
+  React.useEffect(() => {
+    const next = (searchParams.get("tab") as string) || "analysis"
+    setTab(next)
+  }, [searchParams])
+  React.useEffect(() => {
+    const onSwitch = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { value?: string }
+      if (detail?.value) onTabChange(detail.value)
+    }
+    window.addEventListener("switch-tab", onSwitch as EventListener)
+    return () => window.removeEventListener("switch-tab", onSwitch as EventListener)
+  }, [searchParams])
+  const onTabChange = (value: string) => {
+    setTab(value)
+    const params = new URLSearchParams(searchParams.toString())
+    if (value === "analysis") params.delete("tab")
+    else params.set("tab", value)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
   const [openValues, setOpenValues] = React.useState<string[]>([])
   const allIds = ["features", "tracks"]
   const allOpen = allIds.every((id) => openValues.includes(id))
@@ -101,7 +126,7 @@ export function ArtistAnalysis({ artist, initialAnalysis, initialGeneration }: A
       <div className="mx-auto max-w-6xl px-4 pt-6 md:pt-8 pb-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8">
         {/* Left/main: Tabs only */}
         <div className="space-y-6">
-          <Tabs defaultValue="analysis" className="w-full">
+          <Tabs value={tab} onValueChange={onTabChange} className="w-full">
             <div className="flex items-center justify-between mb-3">
               <TabsList>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
