@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
             g.*,
             a.name as artist_name,
             a.image_url as artist_image_url,
-            a.genres as artist_genres
+            a.genres as artist_genres,
+            a.spotify_id as artist_spotify_id,
+            COUNT(*) OVER() as total_count
           FROM generations g
           LEFT JOIN artists a ON g.artist_id = a.id
           WHERE 
@@ -38,7 +40,9 @@ export async function GET(request: NextRequest) {
             g.*,
             a.name as artist_name,
             a.image_url as artist_image_url,
-            a.genres as artist_genres
+            a.genres as artist_genres,
+            a.spotify_id as artist_spotify_id,
+            COUNT(*) OVER() as total_count
           FROM generations g
           LEFT JOIN artists a ON g.artist_id = a.id
           ORDER BY g.created_at DESC 
@@ -54,7 +58,9 @@ export async function GET(request: NextRequest) {
             g.*,
             a.name as artist_name,
             a.image_url as artist_image_url,
-            a.genres as artist_genres
+            a.genres as artist_genres,
+            a.spotify_id as artist_spotify_id,
+            COUNT(*) OVER() as total_count
           FROM generations g
           LEFT JOIN artists a ON g.artist_id = a.id
           ${search ? sql`WHERE LOWER(a.name) LIKE LOWER(${"%" + search + "%"})` : sql``}
@@ -67,6 +73,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const totalCount = result?.[0]?.total_count ? Number(result[0].total_count) : undefined
     const formattedGenerations = result.map((row) => ({
       id: Number(row.id),
       artistId: row.artist_id,
@@ -82,11 +89,16 @@ export async function GET(request: NextRequest) {
             name: row.artist_name,
             imageUrl: row.artist_image_url,
             genres: row.artist_genres || [],
+            spotifyId: row.artist_spotify_id,
           }
         : undefined,
     }))
 
-    return NextResponse.json(formattedGenerations)
+    const headers = new Headers()
+    if (typeof totalCount === "number" && !Number.isNaN(totalCount)) {
+      headers.set("x-total-count", String(totalCount))
+    }
+    return new NextResponse(JSON.stringify(formattedGenerations), { headers })
   } catch (error) {
     console.error("Failed to fetch generations:", error)
 
