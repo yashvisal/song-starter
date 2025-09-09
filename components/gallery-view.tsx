@@ -4,30 +4,45 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { GenerationCard } from "./generation-card"
 import { Search, Loader2, RefreshCw } from "lucide-react"
 import type { Generation } from "@/lib/types"
+import { GalleryCard } from "./gallery-card"
+import { GalleryModal } from "./gallery-modal"
 
-export function GalleryView() {
+interface GalleryViewProps {
+  limit?: number
+  showSearch?: boolean
+  showMineOnly?: boolean
+  compact?: boolean
+}
+
+export function GalleryView({ limit = 20, showSearch = true, showMineOnly = true, compact = false }: GalleryViewProps) {
   const [generations, setGenerations] = useState<Generation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [mineOnly, setMineOnly] = useState(false)
   const [username, setUsername] = useState<string>("")
+  const [active, setActive] = useState<Generation | null>(null)
+  const [offset, setOffset] = useState(0)
+  const [total, setTotal] = useState<number | null>(null)
 
-  const fetchGenerations = async (search = "") => {
+  const fetchGenerations = async (search = "", newOffset = 0) => {
     setIsSearching(true)
     try {
       const params = new URLSearchParams()
       if (search) params.set("search", search)
-      params.set("limit", "20")
-      if (mineOnly && username) params.set("user", username)
+      params.set("limit", String(limit))
+      params.set("offset", String(newOffset))
+      if (showMineOnly && mineOnly && username) params.set("user", username)
 
       const response = await fetch(`/api/generations?${params}`)
       if (response.ok) {
         const data = await response.json()
+        const totalHeader = response.headers.get("x-total-count")
+        setTotal(totalHeader ? Number(totalHeader) : null)
         setGenerations(data)
+        setOffset(newOffset)
       }
     } catch (error) {
       console.error("Failed to fetch generations:", error)
@@ -42,77 +57,47 @@ export function GalleryView() {
       const u = localStorage.getItem("suno_username") || ""
       setUsername(u)
     } catch {}
-    fetchGenerations()
-  }, [])
+    fetchGenerations("", 0)
+  }, [limit])
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      fetchGenerations(searchQuery)
+      fetchGenerations(searchQuery, 0)
     }, 300)
     return () => clearTimeout(debounceTimer)
-  }, [searchQuery, mineOnly, username])
+  }, [searchQuery, mineOnly, username, limit])
 
-  const handleRefresh = () => {
-    setIsLoading(true)
-    fetchGenerations(searchQuery)
+  const handlePageChange = (direction: "prev" | "next") => {
+    const newOffset = Math.max(0, offset + (direction === "next" ? limit : -limit))
+    fetchGenerations(searchQuery, newOffset)
   }
+
+  // Pagination-based navigation; infinite scroll removed per feedback
 
   return (
     <div className="space-y-6">
-      {/* Search and Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Browse Generations</span>
-            <div className="flex items-center gap-3">
-              <label className="text-xs flex items-center gap-1 select-none">
-                <input
-                  type="checkbox"
-                  className="accent-primary"
-                  checked={mineOnly}
-                  onChange={(e) => setMineOnly(e.target.checked)}
-                />
-                {username ? `Only mine (${username})` : "Only mine"}
-              </label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isLoading}
-                className="gap-2 bg-transparent"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-            </div>
-          </CardTitle>
-          <CardDescription>Discover AI music prompts created by the community</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by artist name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-              {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
+      {showSearch && (
+        <div className="pt-2">
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+            <Input
+              placeholder="Search by artist name"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-12 pr-10 rounded-full border-neutral-200 shadow-sm"
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-neutral-500" />
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      {/* Results */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Loading generations...</p>
-          </div>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: compact ? 6 : 9 }).map((_, i) => (
+            <div key={i} className="h-48 rounded-2xl border border-neutral-200 bg-neutral-50 animate-pulse" />
+          ))}
         </div>
       ) : generations.length === 0 ? (
         <Card>
@@ -135,19 +120,74 @@ export function GalleryView() {
         </Card>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {generations.length} generation{generations.length !== 1 ? "s" : ""} found
-              {searchQuery && ` for "${searchQuery}"`}
-            </p>
-          </div>
-          <div className="grid gap-6">
-            {generations.map((generation) => (
-              <GenerationCard key={generation.id} generation={generation} />
+          {!compact && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {typeof total === "number"
+                  ? `Showing ${Math.min(total, offset + 1)}–${Math.min(total, offset + generations.length)} of ${total} generations`
+                  : `${generations.length} generations`}
+                {searchQuery && ` for "${searchQuery}"`}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={offset === 0}
+                  onClick={() => handlePageChange("prev")}
+                >
+                  Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={typeof total === "number" ? offset + generations.length >= total : generations.length < limit}
+                  onClick={() => handlePageChange("next")}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+          <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {generations.map((g) => (
+              <GalleryCard key={g.id} generation={g} onSelect={setActive} />
             ))}
           </div>
+          {!compact && (
+            <div className="flex items-center justify-between pt-2">
+              <div className="text-xs text-muted-foreground">
+                {typeof total === "number"
+                  ? `Showing ${Math.min(total, offset + 1)}–${Math.min(total, offset + generations.length)} of ${total}`
+                  : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={offset === 0}
+                  onClick={() => handlePageChange("prev")}
+                >
+                  Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={typeof total === "number" ? offset + generations.length >= total : generations.length < limit}
+                  onClick={() => handlePageChange("next")}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      <GalleryModal open={!!active} onClose={() => setActive(null)} generation={active} />
     </div>
   )
 }
