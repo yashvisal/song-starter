@@ -47,7 +47,7 @@ export function TypewriterHeader() {
           }
         }
       },
-      isDeleting ? 100 : isPaused ? 3000 : 100,
+      isDeleting ? 125 : isPaused ? 1750 : 125,
       // delete speed | pause speed | typing speed
     )
 
@@ -59,7 +59,8 @@ export function TypewriterHeader() {
       Helping you be the next{" "}
       <span className="italic text-orange-500">
         {displayText}
-        <span className="animate-pulse inline-block transform rotate-10 -translate-y-0.5">|</span>
+        <span className="animate-pulse inline-block transform rotate-10 -translate-y-1">|</span>
+        {/* rotate-10 */}
       </span>
     </h1>
   )
