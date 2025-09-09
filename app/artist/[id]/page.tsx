@@ -188,7 +188,10 @@ async function getArtistData(spotifyId: string) {
             })
             ;(artist as any).__initialGeneration = gen
           } else {
-            ;(artist as any).__initialGeneration = existingUserScoped || existingArtistScoped
+            const picked = existingUserScoped || existingArtistScoped
+            // Only hydrate refined prompts if generation belongs to current user
+            const owned = userId && picked?.userId && picked.userId === userId
+            ;(artist as any).__initialGeneration = owned ? picked : { ...picked, refinedPrompts: [] }
           }
         } catch {}
       } catch (spotifyError) {
@@ -215,7 +218,8 @@ async function getArtistData(spotifyId: string) {
           ;(artist as any).__initialAnalysis = latest.generationMetadata.analysisData
         }
         if (latest) {
-          ;(artist as any).__initialGeneration = latest
+          const owned = userId && latest.userId && latest.userId === userId
+          ;(artist as any).__initialGeneration = owned ? latest : { ...latest, refinedPrompts: [] }
         }
       } catch {}
     }
