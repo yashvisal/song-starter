@@ -78,19 +78,47 @@ export function UserNameChip() {
     if (clean.length < 3) return
     setSaving(true)
     let finalName = clean
-    const exists = await checkExists(finalName)
-    if (exists) {
+    // Try server-side rename to migrate existing generations and set cookie
+    const renameResp = await fetch("/api/username/rename", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newUsername: finalName }),
+    })
+    if (renameResp.ok) {
+      const data = await renameResp.json()
+      finalName = data?.username || finalName
+    } else if (renameResp.status === 409) {
+      // If taken, append a random suffix and try rename again to migrate past gens
       const suffix = String(Math.floor(7 + Math.random() * 93)).padStart(2, "0")
       finalName = `${finalName}${suffix}`.slice(0, 20)
+      const retry = await fetch("/api/username/rename", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newUsername: finalName }),
+      })
+      if (retry.ok) {
+        const data = await retry.json()
+        finalName = data?.username || finalName
+      } else {
+        // Fallback to local registration path
+        const registered = await registerUsername(finalName)
+        finalName = registered || finalName
+      }
+    } else {
+      // Fallback to local registration path
+      const exists = await checkExists(finalName)
+      if (exists) {
+        const suffix = String(Math.floor(7 + Math.random() * 93)).padStart(2, "0")
+        finalName = `${finalName}${suffix}`.slice(0, 20)
+      }
+      const registered = await registerUsername(finalName)
+      finalName = registered || finalName
     }
-    const registered = await registerUsername(finalName)
-    const chosen = registered || finalName
-    try {
-      localStorage.setItem("suno_username", chosen)
-    } catch {}
-    setName(chosen)
+    try { localStorage.setItem("suno_username", finalName) } catch {}
+    setName(finalName)
     setEditing(false)
     setSaving(false)
+    try { window.dispatchEvent(new CustomEvent("suno:usernameChanged", { detail: { username: finalName } })) } catch {}
   }
 
   const shuffle = async () => {
