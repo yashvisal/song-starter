@@ -61,6 +61,16 @@ export function GalleryView({ limit = 20, showSearch = true, showMineOnly = true
   }, [limit])
 
   useEffect(() => {
+    const onNameChanged = (e: any) => {
+      const next = e?.detail?.username || ""
+      setUsername(next)
+      fetchGenerations(searchQuery, 0)
+    }
+    window.addEventListener("suno:usernameChanged", onNameChanged as any)
+    return () => window.removeEventListener("suno:usernameChanged", onNameChanged as any)
+  }, [searchQuery])
+
+  useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchGenerations(searchQuery, 0)
     }, 300)
