@@ -78,7 +78,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[refine] Persisted refined prompts to DB", { id: generation.id })
-    return NextResponse.json({ refinedPrompts, generationId: generation.id, generation })
+    const response = NextResponse.json({ refinedPrompts, generationId: generation.id, generation })
+    try {
+      // Mark this generation as the current one for SSR hydrate without flicker
+      response.cookies.set(`suno_last_gen_${artist.id}`, String(generation.id), { path: "/", maxAge: 60 * 60 * 24 * 30 })
+      if (userId) {
+        response.cookies.set("suno_username", userId, { path: "/", maxAge: 60 * 60 * 24 * 365 })
+      }
+    } catch {}
+    return response
   } catch (error) {
     console.error("Prompt refinement error:", error)
 

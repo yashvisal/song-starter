@@ -22,7 +22,7 @@ interface PromptGenerationProps {
 type ViewState = "initial" | "prompts" | "questions" | "refined"
 
 export function PromptGeneration({ artist, initialAnalysis = null, mode = "prompts", initialRefinedPrompts = [], initialGenerationId = 0 }: PromptGenerationProps) {
-  const hasSsrOwnedRefined = mode === "personalize" && Array.isArray(initialRefinedPrompts) && initialRefinedPrompts.length > 0 && !!initialGenerationId
+  const hasSsrOwnedRefined = Array.isArray(initialRefinedPrompts) && initialRefinedPrompts.length > 0 && !!initialGenerationId
   const [viewState, setViewState] = useState<ViewState>(hasSsrOwnedRefined ? "refined" : (initialAnalysis ? "prompts" : "initial"))
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
@@ -70,20 +70,19 @@ export function PromptGeneration({ artist, initialAnalysis = null, mode = "promp
     if (mode !== "personalize") return
     if (hasSsrOwnedRefined) return
     try {
-      const currentGenId = generationId || initialGenerationId || 0
+      const currentGenId = generationId
       if (!currentGenId) return
       const cached = localStorage.getItem(`refined_prompts_${artist.id}_${currentGenId}`)
       if (cached) {
         const arr = JSON.parse(cached)
         if (Array.isArray(arr) && arr.length > 0) {
           setRefinedPrompts(arr)
-          if (!generationId) setGenerationId(Number(currentGenId))
           setViewState("refined")
           setIsHydratingLatest(false)
         }
       }
     } catch {}
-  }, [artist.id, mode, generationId, initialGenerationId])
+  }, [artist.id, mode, generationId])
 
 
   // Fetch latest generation to hydrate analysis/prompts from DB.
@@ -111,7 +110,7 @@ export function PromptGeneration({ artist, initialAnalysis = null, mode = "promp
           if (mode === "prompts") setViewState("prompts")
         }
         if (mode === "personalize") {
-          const targetGenId = generationId || initialGenerationId || 0
+          const targetGenId = generationId
           if (gen.id && targetGenId && Number(gen.id) === Number(targetGenId)) {
             if (Array.isArray(gen.refinedPrompts) && gen.refinedPrompts.length > 0) {
               setRefinedPrompts(gen.refinedPrompts)

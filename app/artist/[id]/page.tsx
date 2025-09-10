@@ -189,9 +189,11 @@ async function getArtistData(spotifyId: string) {
             ;(artist as any).__initialGeneration = gen
           } else {
             const picked = existingUserScoped || existingArtistScoped
-            // Only hydrate refined prompts if generation belongs to current user
+            // Only hydrate refined prompts if generation belongs to current user AND matches last-used generation cookie
             const owned = userId && picked?.userId && picked.userId === userId
-            ;(artist as any).__initialGeneration = owned ? picked : { ...picked, refinedPrompts: [] }
+            const lastGenCookie = cookieStore.get(`suno_last_gen_${artist.id}`)?.value
+            const isCurrent = lastGenCookie && picked?.id && String(picked.id) === String(lastGenCookie)
+            ;(artist as any).__initialGeneration = owned && isCurrent ? picked : { ...picked, refinedPrompts: [] }
           }
         } catch {}
       } catch (spotifyError) {
@@ -219,7 +221,10 @@ async function getArtistData(spotifyId: string) {
         }
         if (latest) {
           const owned = userId && latest.userId && latest.userId === userId
-          ;(artist as any).__initialGeneration = owned ? latest : { ...latest, refinedPrompts: [] }
+          const cookieStore = await cookies()
+          const lastGenCookie = cookieStore.get(`suno_last_gen_${artist.id}`)?.value
+          const isCurrent = lastGenCookie && latest?.id && String(latest.id) === String(lastGenCookie)
+          ;(artist as any).__initialGeneration = owned && isCurrent ? latest : { ...latest, refinedPrompts: [] }
         }
       } catch {}
     }
