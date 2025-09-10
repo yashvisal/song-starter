@@ -13,10 +13,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-gradient-to-br from-orange-500 to-orange-600" />
-            <span className="font-medium tracking-tight">Suno Producer</span>
+            <span className="font-medium tracking-tight">Song Starter</span>
           </div>
-          <nav className="flex items-center gap-4 md:gap-6 text-sm text-neutral-600">
-            <a href="#gallery" className="hover:text-neutral-900">Gallery</a>
+          <nav className="flex items-center gap-2 md:gap-2 text-sm text-neutral-600">
             <UserNameChip />
             <Link href="/gallery">
               <Button className="h-9 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 hover:brightness-110">
