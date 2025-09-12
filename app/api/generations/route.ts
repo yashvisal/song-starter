@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const { search, limit: limitStr, offset: offsetStr } = validateGenerationsQuery(searchParams)
     const userOnly = searchParams.get("user") || undefined
 
-    const limit = limitStr ? Number.parseInt(limitStr) : 20
+    const limit = limitStr ? Number.parseInt(limitStr) : 15
     const offset = offsetStr ? Number.parseInt(offsetStr) : 0
 
     let result
