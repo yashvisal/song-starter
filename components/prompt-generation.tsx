@@ -86,7 +86,7 @@ export function PromptGeneration({ artist, initialAnalysis = null, mode = "promp
 
 
   // Fetch latest generation to hydrate analysis/prompts from DB.
-  // In prompts mode: request artist-scoped generation (no user param) to maximize hit rate.
+  // Always scope by user when available to ensure user-specific caching.
   useEffect(() => {
     let cancelled = false
     async function run() {
@@ -94,12 +94,10 @@ export function PromptGeneration({ artist, initialAnalysis = null, mode = "promp
         setIsHydratingLatest(true)
         const params = new URLSearchParams()
         params.set("artistId", artist.id)
-        if (mode === "personalize") {
-          try {
-            const u = localStorage.getItem("suno_username")
-            if (u) params.set("user", u)
-          } catch {}
-        }
+        try {
+          const u = localStorage.getItem("suno_username")
+          if (u) params.set("user", u)
+        } catch {}
         const res = await fetch(`/api/generations/latest?${params.toString()}`)
         if (!res.ok) return
         const gen = await res.json()
