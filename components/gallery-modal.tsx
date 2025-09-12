@@ -21,6 +21,7 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
   const [artistFull, setArtistFull] = useState<Artist | null>(null)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [tracksPrefetched, setTracksPrefetched] = useState<Array<{ id: string; name: string }> | null>(null)
+  const [isLoadingHeader, setIsLoadingHeader] = useState(false)
 
   const artistSpotifyId = generation?.artist?.spotifyId || ""
 
@@ -71,6 +72,7 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
       try {
         const id = generation?.artist?.spotifyId || generation?.artist?.id
         if (!id) return
+        setIsLoadingHeader(true)
         const [artistRes, tracksRes] = await Promise.all([
           fetch(`/api/artists/${id}`),
           fetch(`/api/artist-top-tracks/${id}?limit=8`),
@@ -85,12 +87,22 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
           if (!cancelled) setTracksPrefetched(arr.map((t: any) => ({ id: t.id, name: t.name })))
         }
       } catch {}
+      finally {
+        if (!cancelled) setIsLoadingHeader(false)
+      }
     }
     if (open && generation) run()
     return () => {
       cancelled = true
     }
   }, [open, generation])
+
+  // Ensure every newly opened artist modal starts at the first tab
+  useEffect(() => {
+    if (open && generation) {
+      setActiveTab("overview")
+    }
+  }, [open, generation?.id])
 
   if (!open || !generation) return null
 
@@ -139,7 +151,7 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
 
             <TabsContent value="overview" className="mt-3">
               <div className="space-y-3">
-                {artistFull && (
+                {artistFull ? (
                   <div className="rounded-xl border border-neutral-200 bg-white p-4">
                     <div className="grid grid-cols-4 gap-3">
                       <div>
@@ -160,9 +172,20 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
                       </div>
                     </div>
                   </div>
+                ) : (
+                  <div className="rounded-xl border border-neutral-200 bg-white p-4">
+                    <div className="grid grid-cols-4 gap-3">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="space-y-2">
+                          <div className="h-3 w-16 bg-neutral-100 rounded animate-pulse" />
+                          <div className="h-4 w-20 bg-neutral-100 rounded animate-pulse" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
-                {artistFull && (
+                {artistFull ? (
                   <div className="rounded-xl border border-neutral-200 bg-white p-4">
                     <div className="space-y-3">
                       {[{ name: "Energy", value: artistFull.audioFeatures.energy * 100 },
@@ -176,6 +199,15 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
                         </div>
                       ))}
                     </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="space-y-1">
+                        <div className="flex justify-between text-xs"><span className="h-3 w-16 bg-neutral-100 rounded animate-pulse" /><span className="h-3 w-10 bg-neutral-100 rounded animate-pulse" /></div>
+                        <div className="h-1.5 bg-neutral-100 rounded animate-pulse" />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
