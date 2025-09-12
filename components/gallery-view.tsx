@@ -87,7 +87,7 @@ export function GalleryView({ limit = 15, showSearch = true, showMineOnly = true
   return (
     <div className="space-y-6">
       {showSearch && (
-        <div className="pt-2">
+        <div className="pt-0">
           <div className="relative w-full">
             <Search className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <Input

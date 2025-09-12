@@ -21,7 +21,14 @@ export default function GalleryPage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 md:py-8">
+        <section className="mx-auto max-w-3xl text-center mb-6 md:mb-8">
+          <h1 className="text-[24px] md:text-[28px] font-semibold tracking-tight text-neutral-900">Explore the Prompt Gallery</h1>
+          <p className="mx-auto mt-2 md:mt-2 max-w-2xl text-sm md:text-[15px] leading-relaxed text-neutral-600">
+            Discover community-made prompt packs to spark ideas. Open an artist to see analysis, prompts, and top tracks.
+          </p>
+        </section>
+
         <GalleryView />
       </main>
     </div>
