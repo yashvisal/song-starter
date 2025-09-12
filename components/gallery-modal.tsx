@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Generation, Artist } from "@/lib/types"
@@ -22,6 +22,8 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [tracksPrefetched, setTracksPrefetched] = useState<Array<{ id: string; name: string }> | null>(null)
   const [isLoadingHeader, setIsLoadingHeader] = useState(false)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [isScrollable, setIsScrollable] = useState(false)
 
   const artistSpotifyId = generation?.artist?.spotifyId || ""
 
@@ -65,6 +67,26 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
     }
     setAnalysis(null)
   }, [open, generation])
+
+  // Track whether the scroll container actually overflows
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    const checkOverflow = () => {
+      const needsScroll = el.scrollHeight > el.clientHeight + 1
+      setIsScrollable(needsScroll)
+    }
+
+    checkOverflow()
+    const ro = new ResizeObserver(checkOverflow)
+    ro.observe(el)
+    window.addEventListener("resize", checkOverflow)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener("resize", checkOverflow)
+    }
+  }, [open, activeTab, analysis, artistFull, tracksPrefetched])
 
   useEffect(() => {
     let cancelled = false
@@ -138,7 +160,7 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
           </button>
         </div>
 
-        <div className="px-4 pb-6 pt-0 overflow-y-auto max-h-[calc(85vh-48px)]">
+        <div ref={scrollRef} className="px-4 pb-6 pt-0 overflow-y-auto max-h-[calc(85vh-48px)]">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="sticky top-0 z-10 -mx-4 mb-3 px-4 py-2 bg-white">
               <TabsList>
@@ -240,7 +262,7 @@ export function GalleryModal({ open, onClose, generation }: GalleryModalProps) {
               </div>
             </TabsContent>
 
-            <TabsContent value="analysis" className="mt-3 px-1">
+            <TabsContent value="analysis" className={`mt-3 px-1 break-words ${isScrollable ? "pb-4" : ""}`}>
               {analysis ? (
                 <div className="space-y-4 text-sm">
                   <div className="space-y-1">
