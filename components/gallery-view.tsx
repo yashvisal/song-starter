@@ -16,7 +16,7 @@ interface GalleryViewProps {
   compact?: boolean
 }
 
-export function GalleryView({ limit = 20, showSearch = true, showMineOnly = true, compact = false }: GalleryViewProps) {
+export function GalleryView({ limit = 15, showSearch = true, showMineOnly = true, compact = false }: GalleryViewProps) {
   const [generations, setGenerations] = useState<Generation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -94,7 +94,7 @@ export function GalleryView({ limit = 20, showSearch = true, showMineOnly = true
               placeholder="Search by artist name"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-12 pr-10 rounded-full border-neutral-200 shadow-sm"
+              className="w-full h-11 pl-12 pr-10 rounded-2xl border-neutral-200 shadow-sm"
             />
             {isSearching && (
               <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-neutral-500" />
