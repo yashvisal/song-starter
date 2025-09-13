@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import TypewriterSlash from "@/components/TypewriterSlash"
 
 const artists = [
   "Taylor Swift",
@@ -58,7 +59,9 @@ export function TypewriterHeader() {
     <h1 className="text-center text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-2">
       Helping you be the next{" "}
       <span className="italic text-orange-500">
-        {displayText}
+        {Array.from(displayText).map((char, index) =>
+          char === "/" ? <TypewriterSlash key={index} /> : <span key={index}>{char}</span>,
+        )}
         <span className="animate-pulse inline-block transform rotate-10 -translate-y-1">|</span>
         {/* rotate-10 */}
       </span>
