@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(null)
     }
     console.log("[gen/latest] Fetching from DB", { artistId, userId })
-    let gen = await getLatestGenerationByArtistAndUser(artistId, userId)
+    const gen = await getLatestGenerationByArtistAndUser(artistId, userId)
     if (gen) {
       console.log("[gen/latest] DB hit", {
         id: gen.id,

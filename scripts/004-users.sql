@@ -8,5 +8,3 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Helpful index for case-insensitive lookups
 CREATE INDEX IF NOT EXISTS idx_users_username_lower ON users ((LOWER(username)));
-
-
