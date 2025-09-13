@@ -10,9 +10,8 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "Suno Producer - AI Music Prompt Generator",
+  title: "Song Starter",
   description: "Analyze Spotify artists and generate personalized AI music prompts",
-  generator: "v0.app",
 }
 
 export default function RootLayout({
