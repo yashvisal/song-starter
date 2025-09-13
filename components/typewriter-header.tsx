@@ -58,12 +58,13 @@ export function TypewriterHeader() {
   return (
     <h1 className="text-center text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-2">
       Helping you be the next{" "}
-      <span className="italic text-orange-500">
+      <span className=" text-orange-500">
         {displayText}
-        <span className="animate-pulse inline-flex -translate-y-1">
+        {/* <span className="animate-pulse inline-flex align-baseline -translate-y-[0.04em]">
           <TypewriterSlash />
-        </span>
+        </span> */}
         {/* rotate-10 */}
+        <span className="animate-pulse inline-block -translate-y-1">|</span>
       </span>
     </h1>
   )
