@@ -59,10 +59,10 @@ export function TypewriterHeader() {
     <h1 className="text-center text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-2">
       Helping you be the next{" "}
       <span className="italic text-orange-500">
-        {Array.from(displayText).map((char, index) =>
-          char === "/" ? <TypewriterSlash key={index} /> : <span key={index}>{char}</span>,
-        )}
-        <span className="animate-pulse inline-block transform rotate-10 -translate-y-1">|</span>
+        {displayText}
+        <span className="animate-pulse inline-flex -translate-y-1">
+          <TypewriterSlash />
+        </span>
         {/* rotate-10 */}
       </span>
     </h1>
