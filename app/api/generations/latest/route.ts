@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
     if (!artistId) {
       return NextResponse.json({ error: "artistId is required" }, { status: 400 })
     }
+    // Enforce user-scoped cache: if userId is missing, do not fall back to global
+    if (!userId) {
+      return NextResponse.json(null)
+    }
     console.log("[gen/latest] Fetching from DB", { artistId, userId })
     let gen = await getLatestGenerationByArtistAndUser(artistId, userId)
-    if (!gen && userId) {
-      // Fallback: try latest by artist only in case legacy rows have null user_id
-      gen = await getLatestGenerationByArtistAndUser(artistId, null)
-    }
     if (gen) {
       console.log("[gen/latest] DB hit", {
         id: gen.id,

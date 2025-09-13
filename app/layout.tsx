@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dmSans.variable} antialiased`}>
-      <body className="font-sans overflow-y-scroll">{children}</body>
+      <body className="font-sans relative min-h-screen overflow-x-hidden overflow-y-scroll isolate">{children}</body>
     </html>
   )
 }

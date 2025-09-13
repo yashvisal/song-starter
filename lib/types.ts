@@ -73,4 +73,5 @@ export interface ArtistSummary {
   name: string
   imageUrl: string
   genres: string[]
+  spotifyId?: string
 }

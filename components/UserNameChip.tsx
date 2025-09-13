@@ -1,8 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Shuffle } from "lucide-react"
 
 const ADJECTIVES = [
   "Groovy","Velvet","Neon","Cosmic","Echoing","Lofi","Mellow","Funky","Rhythmic","Sonic","Electric","Wild","Silent","Golden","Velocirous","Wavy","Radiant","Shadow","Mystic","Liquid","Chill","Turbo","Glitchy","Vivid","Lucid","Dreamy","Noisy","Bassline",
@@ -50,7 +52,7 @@ function generateCandidate(): string {
 
 export function UserNameChip() {
   const [name, setName] = useState<string>("")
-  const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -70,7 +72,7 @@ export function UserNameChip() {
 
   const startEdit = () => {
     setInput(name)
-    setEditing(true)
+    setOpen(true)
   }
 
   const submit = async (candidate: string) => {
@@ -78,19 +80,47 @@ export function UserNameChip() {
     if (clean.length < 3) return
     setSaving(true)
     let finalName = clean
-    const exists = await checkExists(finalName)
-    if (exists) {
+    // Try server-side rename to migrate existing generations and set cookie
+    const renameResp = await fetch("/api/username/rename", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newUsername: finalName }),
+    })
+    if (renameResp.ok) {
+      const data = await renameResp.json()
+      finalName = data?.username || finalName
+    } else if (renameResp.status === 409) {
+      // If taken, append a random suffix and try rename again to migrate past gens
       const suffix = String(Math.floor(7 + Math.random() * 93)).padStart(2, "0")
       finalName = `${finalName}${suffix}`.slice(0, 20)
+      const retry = await fetch("/api/username/rename", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newUsername: finalName }),
+      })
+      if (retry.ok) {
+        const data = await retry.json()
+        finalName = data?.username || finalName
+      } else {
+        // Fallback to local registration path
+        const registered = await registerUsername(finalName)
+        finalName = registered || finalName
+      }
+    } else {
+      // Fallback to local registration path
+      const exists = await checkExists(finalName)
+      if (exists) {
+        const suffix = String(Math.floor(7 + Math.random() * 93)).padStart(2, "0")
+        finalName = `${finalName}${suffix}`.slice(0, 20)
+      }
+      const registered = await registerUsername(finalName)
+      finalName = registered || finalName
     }
-    const registered = await registerUsername(finalName)
-    const chosen = registered || finalName
-    try {
-      localStorage.setItem("suno_username", chosen)
-    } catch {}
-    setName(chosen)
-    setEditing(false)
+    try { localStorage.setItem("suno_username", finalName) } catch {}
+    setName(finalName)
+    setOpen(false)
     setSaving(false)
+    try { window.dispatchEvent(new CustomEvent("suno:usernameChanged", { detail: { username: finalName } })) } catch {}
   }
 
   const shuffle = async () => {
@@ -98,34 +128,52 @@ export function UserNameChip() {
     await submit(cand)
   }
 
-  if (editing) {
-    return (
-      <div className="flex items-center gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Enter username"
-          className="h-8 w-40"
-        />
-        <Button size="sm" variant="outline" onClick={() => submit(input)} disabled={saving}>
-          Save
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
-          Cancel
-        </Button>
-      </div>
-    )
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    submit(input)
   }
 
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-muted-foreground">Signed in as</span>
-      <Button size="sm" variant="secondary" onClick={startEdit} className="px-3 h-8">
-        {name || "Guest"}
-      </Button>
-      <Button size="sm" variant="ghost" onClick={shuffle} className="h-8">
-        Shuffle
-      </Button>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="secondary" onClick={startEdit} className="px-3 h-8">
+            {name || "Guest"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 min-w-[280px] w-auto rounded-xl" align="center" sideOffset={10}>
+          <div className="p-2">
+            <form className="flex gap-2 items-center" onSubmit={handleSubmit}>
+              <div className="relative flex-1">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Enter username..."
+                  className="h-8 text-sm pr-8 rounded-lg"
+                  maxLength={20}
+                  spellCheck={false}
+                  tabIndex={-1}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                  onClick={shuffle}
+                  disabled={saving}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted/50 rounded-md"
+                >
+                  <Shuffle className="w-3 h-3" />
+                </Button>
+              </div>
+
+              <Button size="sm" type="submit" disabled={saving || input.length < 3} className="h-8 px-3 rounded-lg">
+                {saving ? "Saving..." : "Save"}
+              </Button>
+            </form>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

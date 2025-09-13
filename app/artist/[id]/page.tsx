@@ -167,12 +167,10 @@ async function getArtistData(spotifyId: string) {
         try {
           const cookieStore = await cookies()
           const userId = cookieStore.get("suno_username")?.value
-          // Prefer user-scoped existing generation if logged-in user available
+          // Prefer user-scoped existing generation; do not fall back to artist-only for user-specific caching
           const existingUserScoped = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
-          // Fallback to artist-only existing generation
-          const existingArtistScoped = !existingUserScoped ? await getLatestGenerationByArtistAndUser(artist.id, null) : null
 
-          if (!existingUserScoped && !existingArtistScoped) {
+          if (!existingUserScoped) {
             const gen = await saveGeneration({
               artistId: artist.id,
               userId: userId || undefined,
@@ -188,7 +186,12 @@ async function getArtistData(spotifyId: string) {
             })
             ;(artist as any).__initialGeneration = gen
           } else {
-            ;(artist as any).__initialGeneration = existingUserScoped || existingArtistScoped
+            const picked = existingUserScoped
+            // Only hydrate refined prompts if generation belongs to current user AND matches last-used generation cookie
+            const owned = userId && picked?.userId && picked.userId === userId
+            const lastGenCookie = cookieStore.get(`suno_last_gen_${artist.id}`)?.value
+            const isCurrent = lastGenCookie && picked?.id && String(picked.id) === String(lastGenCookie)
+            ;(artist as any).__initialGeneration = owned && isCurrent ? picked : { ...picked, refinedPrompts: [] }
           }
         } catch {}
       } catch (spotifyError) {
@@ -209,13 +212,16 @@ async function getArtistData(spotifyId: string) {
         const cookieStore = await cookies()
         const userId = cookieStore.get("suno_username")?.value
         const latestUser = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
-        const latestArtist = !latestUser ? await getLatestGenerationByArtistAndUser(artist.id, null) : null
-        const latest = latestUser || latestArtist
+        const latest = latestUser
         if (latest?.generationMetadata?.analysisData) {
           ;(artist as any).__initialAnalysis = latest.generationMetadata.analysisData
         }
         if (latest) {
-          ;(artist as any).__initialGeneration = latest
+          const owned = userId && latest.userId && latest.userId === userId
+          const cookieStore = await cookies()
+          const lastGenCookie = cookieStore.get(`suno_last_gen_${artist.id}`)?.value
+          const isCurrent = lastGenCookie && latest?.id && String(latest.id) === String(lastGenCookie)
+          ;(artist as any).__initialGeneration = owned && isCurrent ? latest : { ...latest, refinedPrompts: [] }
         }
       } catch {}
     }

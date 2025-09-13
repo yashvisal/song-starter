@@ -5,6 +5,7 @@ import { ArtistSearch } from "@/components/artist-search"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Search } from "lucide-react"
+import { TypewriterHeader } from "@/components/typewriter-header"
 
 const TRY_NAMES = ["SZA", "Travis Scott", "Billie Eilish"]
 
@@ -19,11 +20,9 @@ export function HomeHero() {
     <section className="relative">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(520px_circle_at_30%_-10%,rgba(255,159,28,0.12),transparent_60%)]" />
       <div className="mx-auto max-w-5xl px-4 pt-14 md:pt-20 pb-10 md:pb-16">
-        <h1 className="text-center text-4xl md:text-5xl font-semibold leading-tight tracking-tight">
-          Create Personalized Music with AI
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-center text-neutral-600">
-          Analyze any Spotify artist and generate Suno‑ready prompts tailored to their style and your vision.
+        <TypewriterHeader />
+        <p className="mx-auto mt-4 max-w-2xl text-center text-neutral-700">
+        Song Starter analyzes your favorite artists to generate prompts for <a href="https://suno.com" target="_blank" rel="noopener noreferrer" className="underline text-orange-500 hover:text-orange-600">Suno</a> that help you create your own music.
         </p>
 
         {/* Search card using our existing ArtistSearch, styled like the sample */}

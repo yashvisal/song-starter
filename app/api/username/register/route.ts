@@ -18,11 +18,13 @@ export async function POST(request: NextRequest) {
       RETURNING id, username
     `
     if (rows.length === 0) {
-      // someone else registered first
-      const existing = await sql`SELECT id, username FROM users WHERE LOWER(username) = LOWER(${name}) LIMIT 1`
-      return NextResponse.json(existing[0] || { error: "taken" }, { status: existing.length ? 200 : 409 })
+      // Username already taken
+      return NextResponse.json({ error: "taken" }, { status: 409 })
     }
-    return NextResponse.json(rows[0])
+    const response = NextResponse.json(rows[0])
+    // Persist identity via cookie for server-side routes
+    response.cookies.set("suno_username", rows[0].username, { path: "/", maxAge: 60 * 60 * 24 * 365 })
+    return response
   } catch (e) {
     return NextResponse.json({ error: "failed" }, { status: 500 })
   }

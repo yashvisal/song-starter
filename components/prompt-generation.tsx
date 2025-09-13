@@ -22,63 +22,71 @@ interface PromptGenerationProps {
 type ViewState = "initial" | "prompts" | "questions" | "refined"
 
 export function PromptGeneration({ artist, initialAnalysis = null, mode = "prompts", initialRefinedPrompts = [], initialGenerationId = 0 }: PromptGenerationProps) {
-  const [viewState, setViewState] = useState<ViewState>(initialAnalysis ? "prompts" : "initial")
+  const hasSsrOwnedRefined = Array.isArray(initialRefinedPrompts) && initialRefinedPrompts.length > 0 && !!initialGenerationId
+  const [viewState, setViewState] = useState<ViewState>(hasSsrOwnedRefined ? "refined" : (initialAnalysis ? "prompts" : "initial"))
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(initialAnalysis)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
-  const [refinedPrompts, setRefinedPrompts] = useState<string[]>([])
-  const [generationId, setGenerationId] = useState<number>(0)
+  const [refinedPrompts, setRefinedPrompts] = useState<string[]>(hasSsrOwnedRefined ? initialRefinedPrompts : [])
+  const [generationId, setGenerationId] = useState<number>(hasSsrOwnedRefined && initialGenerationId ? initialGenerationId : 0)
   const autoRunFor = useRef<string | null>(null)
   const [showQuestions, setShowQuestions] = useState(false)
-  const [isHydratingLatest, setIsHydratingLatest] = useState(true)
+  const [isHydratingLatest, setIsHydratingLatest] = useState(hasSsrOwnedRefined ? false : true)
 
   // Removed client-side analysis LLM call; server should provide analysis
 
   // Auto-trigger initial prompt generation when the component mounts per artist
   useEffect(() => {
     // If server provided analysis, set it; never call LLM here
+    if (hasSsrOwnedRefined) return
     if (initialAnalysis && !analysis) {
       setAnalysis(initialAnalysis)
       setViewState("prompts")
     }
   }, [initialAnalysis])
 
-  // If server pre-hydrated refined prompts, set them immediately to avoid flicker
+  // If server provided refined prompts, only auto-render them in prompts mode.
+  // In personalize mode, we persist them for continuity but do not auto-show unless it's the same generation.
   useEffect(() => {
     if (Array.isArray(initialRefinedPrompts) && initialRefinedPrompts.length > 0) {
-      setRefinedPrompts(initialRefinedPrompts)
       if (!generationId && initialGenerationId) setGenerationId(initialGenerationId)
-      if (mode === "personalize") setViewState("refined")
-      // Persist to localStorage so client navigations can hydrate without flicker
+      // Persist to generation-scoped storage for continuity on refresh
       try {
-        localStorage.setItem(`refined_prompts_${artist.id}`, JSON.stringify(initialRefinedPrompts))
-        if (initialGenerationId) localStorage.setItem(`generation_id_${artist.id}`, String(initialGenerationId))
+        if (initialGenerationId) {
+          localStorage.setItem(`refined_prompts_${artist.id}_${initialGenerationId}`, JSON.stringify(initialRefinedPrompts))
+          localStorage.setItem(`generation_id_${artist.id}`, String(initialGenerationId))
+        }
       } catch {}
+      if (mode !== "personalize" && !hasSsrOwnedRefined) {
+        setRefinedPrompts(initialRefinedPrompts)
+        setViewState("refined")
+      }
     }
   }, [initialRefinedPrompts, initialGenerationId, mode])
 
   // Pre-hydrate from localStorage before first paint to eliminate CTA→refined flicker in personalize mode
   useLayoutEffect(() => {
     if (mode !== "personalize") return
+    if (hasSsrOwnedRefined) return
     try {
-      const cached = localStorage.getItem(`refined_prompts_${artist.id}`)
-      const cachedGenId = localStorage.getItem(`generation_id_${artist.id}`)
+      const currentGenId = generationId
+      if (!currentGenId) return
+      const cached = localStorage.getItem(`refined_prompts_${artist.id}_${currentGenId}`)
       if (cached) {
         const arr = JSON.parse(cached)
         if (Array.isArray(arr) && arr.length > 0) {
           setRefinedPrompts(arr)
-          if (!generationId && cachedGenId) setGenerationId(Number(cachedGenId))
           setViewState("refined")
           setIsHydratingLatest(false)
         }
       }
     } catch {}
-  }, [artist.id, mode])
+  }, [artist.id, mode, generationId])
 
 
   // Fetch latest generation to hydrate analysis/prompts from DB.
-  // In prompts mode: request artist-scoped generation (no user param) to maximize hit rate.
+  // Always scope by user when available to ensure user-specific caching.
   useEffect(() => {
     let cancelled = false
     async function run() {
@@ -86,12 +94,10 @@ export function PromptGeneration({ artist, initialAnalysis = null, mode = "promp
         setIsHydratingLatest(true)
         const params = new URLSearchParams()
         params.set("artistId", artist.id)
-        if (mode === "personalize") {
-          try {
-            const u = localStorage.getItem("suno_username")
-            if (u) params.set("user", u)
-          } catch {}
-        }
+        try {
+          const u = localStorage.getItem("suno_username")
+          if (u) params.set("user", u)
+        } catch {}
         const res = await fetch(`/api/generations/latest?${params.toString()}`)
         if (!res.ok) return
         const gen = await res.json()
@@ -102,9 +108,16 @@ export function PromptGeneration({ artist, initialAnalysis = null, mode = "promp
           if (mode === "prompts") setViewState("prompts")
         }
         if (mode === "personalize") {
-          if (Array.isArray(gen.refinedPrompts) && gen.refinedPrompts.length > 0) {
-            setRefinedPrompts(gen.refinedPrompts)
-            setViewState("refined")
+          const targetGenId = generationId
+          if (gen.id && targetGenId && Number(gen.id) === Number(targetGenId)) {
+            if (Array.isArray(gen.refinedPrompts) && gen.refinedPrompts.length > 0) {
+              setRefinedPrompts(gen.refinedPrompts)
+              setViewState("refined")
+              try {
+                localStorage.setItem(`refined_prompts_${artist.id}_${gen.id}` , JSON.stringify(gen.refinedPrompts))
+                localStorage.setItem(`generation_id_${artist.id}`, String(gen.id))
+              } catch {}
+            }
           }
         }
       } catch {}
