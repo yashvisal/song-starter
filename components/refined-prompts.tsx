@@ -64,9 +64,9 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
       </Card>
       <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
         <CardHeader>
-          <CardTitle className="text-lg">Ready for Suno AI</CardTitle>
+          <CardTitle className="text-lg">Ready for Suno</CardTitle>
           <CardDescription>
-            These prompts are optimized for Suno AI. Copy any prompt and paste it directly into Suno to generate your
+            These prompts are optimized for Suno. Copy any prompt and paste it directly into Suno to generate your
             music.
           </CardDescription>
         </CardHeader>
