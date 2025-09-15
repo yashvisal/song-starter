@@ -60,35 +60,6 @@ export function RefinedPrompts({ prompts, generationId, artistName, onBack }: Re
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-neutral-200">
-            <Button variant="outline" onClick={onBack} className="gap-2 bg-transparent">
-              <ArrowLeft className="w-4 h-4" />
-              Generate New Prompts
-            </Button>
-            <Button onClick={copyAllPrompts} className="gap-2">
-              {copiedIndex === -1 ? (
-                <>
-                  <Check className="w-4 h-4 text-green-500" />
-                  Copied All!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  Copy All Prompts
-                </>
-              )}
-            </Button>
-            <Button variant="outline" className="gap-2 bg-transparent">
-              <Share className="w-4 h-4" />
-              Share
-            </Button>
-            <Link href="/">
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <Home className="w-4 h-4" />
-                Back to Home
-              </Button>
-            </Link>
-          </div>
         </CardContent>
       </Card>
       <Card className="border-neutral-200 bg-white rounded-2xl pt-6">
