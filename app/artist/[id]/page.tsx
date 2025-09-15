@@ -19,6 +19,8 @@ async function getArtistData(spotifyId: string) {
 
     // Check if we have cached data
     let artist = await getArtist(spotifyId)
+    const cookieStore = await cookies()
+    const userId = cookieStore.get("suno_username")?.value || null
 
     if (!artist || Date.now() - artist.updatedAt.getTime() > 24 * 60 * 60 * 1000) {
       console.log("[v0] Fetching fresh data from Spotify")
@@ -163,10 +165,8 @@ async function getArtistData(spotifyId: string) {
         console.log("[v0] Saved artist to database")
         ;(artist as any).__initialAnalysis = initialAnalysis
 
-        // Persist initial analysis to generations to enable seamless hydration
+        // Persist initial analysis to generations to enable seamless hydration (per-user)
         try {
-          const cookieStore = await cookies()
-          const userId = cookieStore.get("suno_username")?.value
           // Prefer user-scoped existing generation; do not fall back to artist-only for user-specific caching
           const existingUserScoped = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
 
@@ -209,8 +209,6 @@ async function getArtistData(spotifyId: string) {
 
       // Hydrate initial analysis/generation from DB if available (prevents client flicker)
       try {
-        const cookieStore = await cookies()
-        const userId = cookieStore.get("suno_username")?.value
         const latestUser = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
         const latest = latestUser
         if (latest?.generationMetadata?.analysisData) {
@@ -218,12 +216,39 @@ async function getArtistData(spotifyId: string) {
         }
         if (latest) {
           const owned = userId && latest.userId && latest.userId === userId
-          const cookieStore = await cookies()
           const lastGenCookie = cookieStore.get(`suno_last_gen_${artist.id}`)?.value
           const isCurrent = lastGenCookie && latest?.id && String(latest.id) === String(lastGenCookie)
           ;(artist as any).__initialGeneration = owned && isCurrent ? latest : { ...latest, refinedPrompts: [] }
         }
       } catch {}
+
+      // If no user-scoped generation exists, create a first-time per-user generation now
+      if (!(artist as any).__initialAnalysis) {
+        try {
+          const initialAnalysis = await analyzeArtistAndGeneratePrompts({
+            ...artist,
+          } as any)
+          ;(artist as any).__initialAnalysis = initialAnalysis
+          if (userId) {
+            const gen = await saveGeneration({
+              artistId: artist.id,
+              userId: userId || undefined,
+              userQuestions: [],
+              originalPrompts: initialAnalysis.initialPrompts,
+              refinedPrompts: [],
+              generationMetadata: {
+                analysisData: initialAnalysis,
+                timestamp: new Date().toISOString(),
+                processingTime: 0,
+                phase: "initial",
+              },
+            })
+            ;(artist as any).__initialGeneration = gen
+          }
+        } catch (e) {
+          console.log("[v0] Failed to create first-time per-user generation:", e)
+        }
+      }
     }
 
     return artist

@@ -108,6 +108,16 @@ export function ArtistSearch({ onArtistSelect, prefill }: ArtistSearchProps) {
     if (onArtistSelect) {
       onArtistSelect(artist)
     } else {
+      // Ensure username cookie mirrors localStorage before server navigation
+      try {
+        const hasCookie = document.cookie.includes("suno_username=")
+        if (!hasCookie) {
+          const u = localStorage.getItem("suno_username")
+          if (u) {
+            document.cookie = `suno_username=${encodeURIComponent(u)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+          }
+        }
+      } catch {}
       router.push(`/artist/${artist.id}`)
     }
   }

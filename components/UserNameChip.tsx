@@ -61,11 +61,25 @@ export function UserNameChip() {
       const existing = localStorage.getItem("suno_username") || ""
       if (existing) {
         setName(existing)
+        // Mirror to cookie if missing so SSR sees the same user id
+        try {
+          const hasCookie = document.cookie.includes("suno_username=")
+          if (!hasCookie) {
+            document.cookie = `suno_username=${encodeURIComponent(existing)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+          }
+        } catch {}
       } else {
         // Generate local candidate (best-effort, register lazily on first save or shuffle)
         const cand = generateCandidate()
         setName(cand)
         localStorage.setItem("suno_username", cand)
+        // Set cookie for SSR alignment
+        try {
+          const hasCookie = document.cookie.includes("suno_username=")
+          if (!hasCookie) {
+            document.cookie = `suno_username=${encodeURIComponent(cand)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+          }
+        } catch {}
       }
     } catch {}
   }, [])
@@ -117,6 +131,8 @@ export function UserNameChip() {
       finalName = registered || finalName
     }
     try { localStorage.setItem("suno_username", finalName) } catch {}
+    // Also mirror to cookie so SSR immediately sees updates
+    try { document.cookie = `suno_username=${encodeURIComponent(finalName)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax` } catch {}
     setName(finalName)
     setOpen(false)
     setSaving(false)
