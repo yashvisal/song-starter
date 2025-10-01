@@ -1,0 +1,55 @@
+[{
+  "id": 8,
+  "user_id": "MysticPanda",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-13 15:32:55.045"
+}, {
+  "id": 29,
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-16 11:06:13.768"
+}, {
+  "id": 34,
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-17 21:37:33.511"
+}, {
+  "id": 37,
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-23 10:16:12.891"
+}, {
+  "id": 40,
+  "user_id": "RadiantTrack",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-24 01:42:13.504"
+}, {
+  "id": 41,
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-26 23:19:40.523"
+}, {
+  "id": 42,
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-29 08:18:25.172"
+}, {
+  "id": 44,
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-30 11:02:18.655"
+}, {
+  "id": 46,
+  "user_id": "BasslineRhino",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-10-01 22:57:31.965"
+}]

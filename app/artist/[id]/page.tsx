@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { spotifyAPI } from "@/lib/spotify"
 import { saveArtist, getArtist, getLatestGenerationByArtistAndUser, saveGeneration } from "@/lib/database"
 import { ArtistAnalysis } from "@/components/artist-analysis"
@@ -170,7 +170,7 @@ async function getArtistData(spotifyId: string) {
           // Prefer user-scoped existing generation; do not fall back to artist-only for user-specific caching
           const existingUserScoped = userId ? await getLatestGenerationByArtistAndUser(artist.id, userId) : null
 
-          if (!existingUserScoped) {
+          if (userId && !existingUserScoped) {
             const gen = await saveGeneration({
               artistId: artist.id,
               userId: userId || undefined,
@@ -264,6 +264,12 @@ async function getArtistData(spotifyId: string) {
 export default async function ArtistPage({ params }: ArtistPageProps) {
   try {
     const { id } = await params
+    // Require username before rendering artist to avoid anonymous initial writes
+    const cookieStore = await cookies()
+    const cookieUser = cookieStore.get("suno_username")?.value || ""
+    if (!cookieUser) {
+      redirect(`/?next=/artist/${id}`)
+    }
     const artist = await getArtistData(id)
 
     if (!artist) {

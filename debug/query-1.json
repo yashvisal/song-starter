@@ -1,0 +1,273 @@
+[{
+  "id": 26,
+  "artist_name": "ANOTR",
+  "spotify_id": "4p5WgeiPSPpqPDs7T6OkWf",
+  "user_id": "FunkyCoyote",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 19:51:33.044"
+}, {
+  "id": 23,
+  "artist_name": "Bad Bunny",
+  "spotify_id": "4q3ewBCX7sLwd24euuV69X",
+  "user_id": "WavyBeat",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 19:50:12.39"
+}, {
+  "id": 20,
+  "artist_name": "BigXthaPlug",
+  "spotify_id": "6qxpnaukVayrQn6ViNvu9I",
+  "user_id": "MysticPanda",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-15 19:47:34.807"
+}, {
+  "id": 11,
+  "artist_name": "Billie Eilish",
+  "spotify_id": "6qqNVTkY8uBg9cP3Jd7DAH",
+  "user_id": "MysticPanda",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-13 15:46:05.283"
+}, {
+  "id": 21,
+  "artist_name": "Chance the Rapper",
+  "spotify_id": "1anyVhU62p31KFi8MEzkbf",
+  "user_id": "ElectricTiger",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 19:48:21.611"
+}, {
+  "id": 12,
+  "artist_name": "Drake",
+  "spotify_id": "3TVXtAsR1Inumwj472S9r4",
+  "user_id": "MysticPanda",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-13 16:09:53.928"
+}, {
+  "id": 28,
+  "artist_name": "Drake",
+  "spotify_id": "3TVXtAsR1Inumwj472S9r4",
+  "user_id": "EchoingMoose",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 23:16:30.993"
+}, {
+  "id": 17,
+  "artist_name": "Ed Sheeran",
+  "spotify_id": "6eUKZXaKkcviH0Ku9w2n3V",
+  "user_id": "LucidOtter",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-15 06:33:43.198"
+}, {
+  "id": 38,
+  "artist_name": "HAIM",
+  "spotify_id": "4Ui2kfOqGujY81UcPrb5KE",
+  "user_id": "NoisyFalcon",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-23 17:47:35.517"
+}, {
+  "id": 31,
+  "artist_name": "J. Cole",
+  "spotify_id": "6l3HvQ5sa6mXTsMTB19rO5",
+  "user_id": "MysticPanda",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-16 15:47:12.666"
+}, {
+  "id": 14,
+  "artist_name": "Kendrick Lamar",
+  "spotify_id": "2YZyLoL8N0Wb9xBt1NhZWg",
+  "user_id": "MysticPanda",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-14 21:46:16.955"
+}, {
+  "id": 32,
+  "artist_name": "LCD Soundsystem",
+  "spotify_id": "066X20Nz7iquqkkCW6Jxy6",
+  "user_id": "NoisyFalcon",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-16 20:50:32.743"
+}, {
+  "id": 35,
+  "artist_name": "Lupe Fiasco",
+  "spotify_id": "01QTIT5P1pFP3QnnFSdsJf",
+  "user_id": "NoisyFalcon",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-17 22:40:29.792"
+}, {
+  "id": 30,
+  "artist_name": "Nahko And Medicine For The People",
+  "spotify_id": "35fFUv2850L9CQjjNrLBpb",
+  "user_id": "BasslineTiger",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-16 12:42:57.513"
+}, {
+  "id": 43,
+  "artist_name": "Nahko And Medicine For The People",
+  "spotify_id": "35fFUv2850L9CQjjNrLBpb",
+  "user_id": "MellowShark",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-29 20:46:09.103"
+}, {
+  "id": 13,
+  "artist_name": "Olivia Rodrigo",
+  "spotify_id": "1McMsnEElThX1knmY4oliG",
+  "user_id": "GoldenMelody",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-13 17:01:04.129"
+}, {
+  "id": 27,
+  "artist_name": "PAWSA",
+  "spotify_id": "4E0HD2PMY8kQJIjlShrLUS",
+  "user_id": "FunkyCoyote",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 19:52:40.101"
+}, {
+  "id": 39,
+  "artist_name": "PAWSA",
+  "spotify_id": "4E0HD2PMY8kQJIjlShrLUS",
+  "user_id": "MysticPanda",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-24 01:41:29.711"
+}, {
+  "id": 36,
+  "artist_name": "Post Malone",
+  "spotify_id": "246dkjvS1zLTtiykXe5h60",
+  "user_id": "NoisyFalcon",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-18 21:37:57.54"
+}, {
+  "id": 45,
+  "artist_name": "Rebelution",
+  "spotify_id": "2WjvvwAX0mdWwq3aFuUdtc",
+  "user_id": "MellowShark",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-30 18:57:19.235"
+}, {
+  "id": 10,
+  "artist_name": "SZA",
+  "spotify_id": "7tYKF4w9nC0nq9CsPZTHyP",
+  "user_id": "GoldenMelody",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-13 15:36:31.698"
+}, {
+  "id": 24,
+  "artist_name": "Taylor Swift",
+  "spotify_id": "06HL4z0CvFAxyc27GXpf02",
+  "user_id": "MysticPanda",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 19:51:02.108"
+}, {
+  "id": 8,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": "MysticPanda",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-13 15:32:55.045"
+}, {
+  "id": 29,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-16 11:06:13.768"
+}, {
+  "id": 34,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-17 21:37:33.511"
+}, {
+  "id": 37,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-23 10:16:12.891"
+}, {
+  "id": 40,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": "RadiantTrack",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-24 01:42:13.504"
+}, {
+  "id": 41,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-26 23:19:40.523"
+}, {
+  "id": 42,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-29 08:18:25.172"
+}, {
+  "id": 44,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": null,
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-30 11:02:18.655"
+}, {
+  "id": 46,
+  "artist_name": "Travis Scott",
+  "spotify_id": "0Y5tJX1MQlPlqiwlOH1tJY",
+  "user_id": "BasslineRhino",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-10-01 22:57:31.965"
+}, {
+  "id": 25,
+  "artist_name": "Tyler, The Creator",
+  "spotify_id": "4V8LLVI7PbaPR0K2TGSxFF",
+  "user_id": "MysticPanda",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 19:51:26.96"
+}, {
+  "id": 22,
+  "artist_name": "Westside Gunn",
+  "spotify_id": "0ABk515kENDyATUdpCKVfW",
+  "user_id": "MysticPanda",
+  "refined_len": 0,
+  "phase": "initial",
+  "created_at": "2025-09-15 19:49:41.106"
+}, {
+  "id": 33,
+  "artist_name": "Young Thug",
+  "spotify_id": "50co4Is1HCEo8bhOyUWKpn",
+  "user_id": "MysticPanda",
+  "refined_len": 10,
+  "phase": "refined",
+  "created_at": "2025-09-17 19:43:15.837"
+}]

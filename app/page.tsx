@@ -1,3 +1,4 @@
+"use client"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { UserNameChip } from "@/components/UserNameChip"
@@ -5,8 +6,24 @@ import { HomeHero } from "@/components/home-hero"
 import { HomeGallery } from "@/components/home-gallery"
 import { SamplePrompts } from "@/components/sample-prompts"
 import { ChevronDown } from "lucide-react"
+import { useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 
 export default function HomePage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    const next = searchParams.get("next") || ""
+    if (!next) return
+    try {
+      const hasCookie = document.cookie.includes("suno_username=")
+      if (hasCookie) {
+        router.replace(next)
+      }
+    } catch {}
+  }, [searchParams, router])
+
   return (
     <main className="min-h-screen bg-white text-neutral-900">
       {/* Header */}
